@@ -68,20 +68,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     
     
     let addEntryToTail (key: 'Key) (value: 'Value) (slot: byref<Slot<'Key,'Value>>) =
-        
-        let rec loop (acc: list<Entry<'Key, 'Value>>) (entries: list<Entry<'Key, 'Value>>) =
-            match entries with
-            | [] -> acc
-            | head::tail ->
-                if EqualityComparer.Default.Equals (key, head.Key) then
-                    let newHead = { head with Value = value }
-                    
-                    loop (newHead::acc) tail
-                else
-                    loop (head::acc) tail
-        
-        let newTail = loop [] slot.Tail
-        
         // See if there is already an Entry for the Key in the bucket
         let indexForEntry = getIndexForEntry key slot.Tail
         

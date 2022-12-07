@@ -46,6 +46,7 @@ type Benchmarks () =
     let zeroAllocDictionary = ZeroAlloc.Dictionary data
     let arraysDictionary = Arrays.Dictionary data
     let embeddedHeadDictionary = EmbeddedHead.Dictionary data
+    // let enumSlotTypeDictionary = EnumSlotType.Dictionary data
     
     // [<Benchmark>]
     member _.Map () =
@@ -101,7 +102,7 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark>]
+    // [<Benchmark>]
     member _.ZeroAllocList () =
         let mutable acc = 0
         
@@ -127,6 +128,15 @@ type Benchmarks () =
             acc <- acc + embeddedHeadDictionary[k]
 
         acc
+        
+    // [<Benchmark>]
+    // member _.EnumSlotType () =
+    //     let mutable acc = 0
+    //     
+    //     for k in keys do
+    //         acc <- acc + enumSlotTypeDictionary[k]
+    //
+    //     acc
 
 
 [<RequireQualifiedAccess>]
