@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.Naive
+﻿namespace FastDictionaryTest.OpenChaining
 
 open System.Collections.Generic
 

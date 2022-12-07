@@ -15,7 +15,7 @@ type Benchmarks () =
     
     let rng = Random 123
     let maxValue = 1_000_000
-    let valueCount = 100_000
+    let valueCount = 100
     let lookupCount = 10_000
     
     let data =
@@ -42,10 +42,10 @@ type Benchmarks () =
     let testDict = dict data
     let testReadOnlyDict = readOnlyDict data
 
-    let naiveDictionary = Naive.Dictionary data
+    let naiveDictionary = OpenChaining.Dictionary data
     let zeroAllocDictionary = ZeroAlloc.Dictionary data
     let arraysDictionary = Arrays.Dictionary data
-    let nextDictionary = Next2.Dictionary data
+    let embeddedHeadDictionary = EmbeddedHead.Dictionary data
     
     // [<Benchmark>]
     member _.Map () =
@@ -93,7 +93,7 @@ type Benchmarks () =
         acc
 
     // [<Benchmark>]
-    member _.NaiveDictionary () =
+    member _.OpenChaining () =
         let mutable acc = 0
         
         for k in keys do
@@ -101,8 +101,8 @@ type Benchmarks () =
 
         acc
         
-    // [<Benchmark>]
-    member _.ZeroAlloc () =
+    [<Benchmark>]
+    member _.ZeroAllocList () =
         let mutable acc = 0
         
         for k in keys do
@@ -120,11 +120,11 @@ type Benchmarks () =
         acc
         
     [<Benchmark>]
-    member _.NextDict () =
+    member _.EmbeddedHead () =
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + nextDictionary[k]
+            acc <- acc + embeddedHeadDictionary[k]
 
         acc
 
@@ -155,11 +155,15 @@ let profile (version: string) loopCount =
             result <- b.Dictionary()
     | "naive" ->
         for i in 1 .. loopCount do
-            result <- b.NaiveDictionary()
+            result <- b.OpenChaining()
 
     | "zeroalloc" ->
         for _ in 1 .. loopCount do
-            result <- b.ZeroAlloc()
+            result <- b.ZeroAllocList()
+            
+    | "embeddedhead" ->
+        for _ in 1 .. loopCount do
+            result <- b.EmbeddedHead()
         
     | unknownVersion -> failwith $"Unknown version: {unknownVersion}" 
             

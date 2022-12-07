@@ -19,9 +19,9 @@ let expectedValues =
 
 
 [<Test>]
-let ``Naive Dictionary matches`` () =
+let ``OpenChaining Dictionary matches`` () =
     
-    let naiveDictionary = Naive.Dictionary data
+    let naiveDictionary = OpenChaining.Dictionary data
     
     for k, v in data do
         naiveDictionary[k] <- v
@@ -60,7 +60,7 @@ let ``Array Dictionary matches`` () =
 [<Test>]
 let ``Chain Dictionary matches`` () =
     
-    let naiveDictionary = Next2.Dictionary data
+    let naiveDictionary = Embedded.Dictionary data
     
     for k, v in data do
         naiveDictionary[k] <- v

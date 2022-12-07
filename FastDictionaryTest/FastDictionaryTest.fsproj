@@ -6,10 +6,10 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Naive.fs"/>
+        <Compile Include="OpenChaining.fs"/>
         <Compile Include="ZeroAlloc.fs"/>
         <Compile Include="Arrays.fs"/>
-        <Compile Include="Next2.fs"/>
+        <Compile Include="EmbeddedHead.fs"/>
     </ItemGroup>
 
 </Project>

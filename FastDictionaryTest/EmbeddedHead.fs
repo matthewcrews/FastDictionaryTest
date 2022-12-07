@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.Next2
+﻿namespace FastDictionaryTest.EmbeddedHead
 
 open System.Collections.Generic
 
@@ -68,6 +68,20 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     
     
     let addEntryToTail (key: 'Key) (value: 'Value) (slot: byref<Slot<'Key,'Value>>) =
+        
+        let rec loop (acc: list<Entry<'Key, 'Value>>) (entries: list<Entry<'Key, 'Value>>) =
+            match entries with
+            | [] -> acc
+            | head::tail ->
+                if EqualityComparer.Default.Equals (key, head.Key) then
+                    let newHead = { head with Value = value }
+                    
+                    loop (newHead::acc) tail
+                else
+                    loop (head::acc) tail
+        
+        let newTail = loop [] slot.Tail
+        
         // See if there is already an Entry for the Key in the bucket
         let indexForEntry = getIndexForEntry key slot.Tail
         
@@ -102,7 +116,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 addEntryToTail key value &slot
                     
     let resize () =
-        
+        // Resize if our fill is >75%
         if count > (slots.Length >>> 2) * 3 then
             let oldSlots = slots
             
@@ -130,20 +144,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 head.Value
             else
                 searchTailForKey key tail
-        
-    let getValueForKey (key: 'Key) =
-        let slotIdx = computeSlotIndex key
-        let slot = slots[slotIdx]
-        
-        match slot.Type with
-        | Filled ->
-            if EqualityComparer.Default.Equals (key, slot.Entry.Key) then
-                slot.Entry.Value
-            else
-                searchTailForKey key slot.Tail
-                
-        | Empty ->
-            raise (KeyNotFoundException())
+
         
     do
         for k, v in entries do
@@ -153,7 +154,20 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     new () = Dictionary<'Key, 'Value>([])
             
     member d.Item
-        with get (key: 'Key) = getValueForKey key
+        with get (key: 'Key) =
+            let slotIdx = computeSlotIndex key
+            let slot = slots[slotIdx]
+            
+            match slot.Type with
+            | Filled ->
+                if EqualityComparer.Default.Equals (key, slot.Entry.Key) then
+                    slot.Entry.Value
+                else
+                    searchTailForKey key slot.Tail
+                    
+            | Empty ->
+                raise (KeyNotFoundException())
+            
             
         and set (key: 'Key) (value: 'Value) =
                 addEntry key value
