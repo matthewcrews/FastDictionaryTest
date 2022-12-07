@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net6.0</TargetFramework>
+        <Platform>x64</Platform>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Compile Include="Program.fs"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\FastDictionaryTest\FastDictionaryTest.fsproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Argu" Version="6.1.1"/>
+        <PackageReference Include="BenchmarkDotNet" Version="0.13.2"/>
+        <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.2"/>
+    </ItemGroup>
+
+</Project>
