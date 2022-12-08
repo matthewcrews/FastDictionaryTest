@@ -10,6 +10,7 @@
         <Compile Include="ZeroAlloc.fs"/>
         <Compile Include="Arrays.fs"/>
         <Compile Include="EmbeddedHead.fs"/>
+        <Compile Include="LinearProbing.fs"/>
     </ItemGroup>
 
 </Project>

@@ -7,10 +7,13 @@ open NUnit.Framework
 let Setup () =
     ()
 
+let rng = System.Random 123
+let maxKey = 1_000_000_000
+let maxValue = 1_000_000
 
 let data =
-    [for i in 1..10 ->
-        i * 10, i]
+    [for _ in 1..10 ->
+        rng.Next maxKey, rng.Next maxValue]
     
 let expectedValues =
     data
@@ -58,9 +61,22 @@ let ``Array Dictionary matches`` () =
 
 
 [<Test>]
-let ``Chain Dictionary matches`` () =
+let ``EmbeddedHead Dictionary matches`` () =
     
-    let naiveDictionary = Embedded.Dictionary data
+    let naiveDictionary = EmbeddedHead.Dictionary data
+    
+    for k, v in data do
+        naiveDictionary[k] <- v
+    
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = naiveDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)
+        
+        
+[<Test>]
+let ``LinearProbing Dictionary matches`` () =
+    
+    let naiveDictionary = LinearProbing.Dictionary data
     
     for k, v in data do
         naiveDictionary[k] <- v

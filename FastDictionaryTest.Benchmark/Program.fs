@@ -14,18 +14,19 @@ open FastDictionaryTest
 type Benchmarks () =
     
     let rng = Random 123
+    let maxKey = 1_000_000_000
     let maxValue = 1_000_000
-    let valueCount = 100
+    let valueCount = 1024
     let lookupCount = 10_000
     
     let data =
         [ for i in 1 .. valueCount ->
-            i, rng.Next maxValue ]    
+            rng.Next maxKey, rng.Next maxValue ]    
     
     let keys =
         [| for _ in 1 .. lookupCount ->
             // Next is exclusive on the upper bound
-            rng.Next (1, valueCount + 1) |]
+            fst data[rng.Next valueCount] |]
     
     let testMap = Map data
     let testDictionary =
@@ -46,7 +47,7 @@ type Benchmarks () =
     let zeroAllocDictionary = ZeroAlloc.Dictionary data
     let arraysDictionary = Arrays.Dictionary data
     let embeddedHeadDictionary = EmbeddedHead.Dictionary data
-    // let enumSlotTypeDictionary = EnumSlotType.Dictionary data
+    let linearProbingDictionary = LinearProbing.Dictionary data
     
     // [<Benchmark>]
     member _.Map () =
@@ -93,7 +94,7 @@ type Benchmarks () =
 
         acc
 
-    // [<Benchmark>]
+    [<Benchmark>]
     member _.OpenChaining () =
         let mutable acc = 0
         
@@ -102,7 +103,7 @@ type Benchmarks () =
 
         acc
         
-    // [<Benchmark>]
+    [<Benchmark>]
     member _.ZeroAllocList () =
         let mutable acc = 0
         
@@ -129,14 +130,14 @@ type Benchmarks () =
 
         acc
         
-    // [<Benchmark>]
-    // member _.EnumSlotType () =
-    //     let mutable acc = 0
-    //     
-    //     for k in keys do
-    //         acc <- acc + enumSlotTypeDictionary[k]
-    //
-    //     acc
+    [<Benchmark>]
+    member _.LinearProbing () =
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + linearProbingDictionary[k]
+    
+        acc
 
 
 [<RequireQualifiedAccess>]

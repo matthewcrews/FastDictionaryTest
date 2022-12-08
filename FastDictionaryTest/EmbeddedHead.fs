@@ -12,14 +12,14 @@ module private Helpers =
         }
     
     [<Struct>]
-    type SlotType =
+    type Status =
         | Empty
         | Filled
         
     [<Struct>]
     type Slot<'Key, 'Value> =
         {
-            mutable Type : SlotType
+            mutable Status : Status
             mutable Entry : Entry<'Key, 'Value>
             mutable Tail : list<Entry<'Key, 'Value>>
         }
@@ -28,7 +28,7 @@ module private Helpers =
         
         let empty<'Key, 'Value> =
             {
-                Type = Empty
+                Status = Empty
                 Entry = {
                     Key = Unchecked.defaultof<'Key>
                     Value = Unchecked.defaultof<'Value>
@@ -89,9 +89,9 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         let slotIdx = computeSlotIndex key
         let slot = &slots[slotIdx]
         
-        match slot.Type with
+        match slot.Status with
         | Empty ->
-            slot.Type <- Filled
+            slot.Status <- Filled
             slot.Entry <- { Key = key; Value = value }
             count <- count + 1
         | Filled ->
@@ -103,7 +103,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     
     let resize () =
         // Resize if our fill is >75%
-        if count > (slots.Length >>> 2) * 3 then
+        // if count > (slots.Length >>> 2) * 3 then
+        if count > slots.Length then
             let oldSlots = slots
             
             // Increase the size of the backing store
@@ -112,7 +113,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             count <- 0
             
             for slot in oldSlots do
-                match slot.Type with
+                match slot.Status with
                 | Filled ->
                     addEntry slot.Entry.Key slot.Entry.Value
                     for entry in slot.Tail do
@@ -144,7 +145,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             let slotIdx = computeSlotIndex key
             let slot = slots[slotIdx]
             
-            match slot.Type with
+            match slot.Status with
             | Filled ->
                 if EqualityComparer.Default.Equals (key, slot.Entry.Key) then
                     slot.Entry.Value
