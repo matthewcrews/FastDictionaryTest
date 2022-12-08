@@ -44,7 +44,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     
     // This relies on the number of slots being a power of 2
     let computeHashCode (key: 'Key) =
-        EqualityComparer.Default.GetHashCode key
+        // Ensure the HashCode is positive
+        (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
         
     let computeSlotIndex (hashCode: int) =
         hashCode &&& slotMask

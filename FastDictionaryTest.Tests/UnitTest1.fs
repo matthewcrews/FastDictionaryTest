@@ -8,12 +8,13 @@ let Setup () =
     ()
 
 let rng = System.Random 123
+let minKey = -1_000_000_000
 let maxKey = 1_000_000_000
 let maxValue = 1_000_000
 
 let data =
     [for _ in 1..10 ->
-        rng.Next maxKey, rng.Next maxValue]
+        rng.Next (minKey, maxKey), rng.Next maxValue]
     
 let expectedValues =
     data

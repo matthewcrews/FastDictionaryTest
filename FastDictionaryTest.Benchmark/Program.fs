@@ -51,6 +51,7 @@ type Benchmarks () =
     let arraysDictionary = Arrays.Dictionary data
     let embeddedHeadDictionary = EmbeddedHead.Dictionary data
     let linearProbingDictionary = LinearProbing.Dictionary data
+    let cacheHashCodeDictionary = CacheHashCode.Dictionary data
     
     // [<Benchmark>]
     member _.Map () =
@@ -139,6 +140,15 @@ type Benchmarks () =
         
         for k in keys do
             acc <- acc + linearProbingDictionary[k]
+    
+        acc
+        
+    [<Benchmark(Description = "Cache HashCode")>]
+    member _.CacheHashCode () =
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + cacheHashCodeDictionary[k]
     
         acc
 
