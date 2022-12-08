@@ -84,3 +84,16 @@ let ``LinearProbing Dictionary matches`` () =
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = naiveDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
+        
+        
+[<Test>]
+let ``CacheHashCode Dictionary matches`` () =
+    
+    let naiveDictionary = CacheHashCode.Dictionary data
+    
+    for k, v in data do
+        naiveDictionary[k] <- v
+    
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = naiveDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)

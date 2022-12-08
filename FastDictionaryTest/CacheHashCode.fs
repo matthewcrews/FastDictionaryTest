@@ -1,35 +1,31 @@
-﻿namespace FastDictionaryTest.LinearProbing
+﻿namespace FastDictionaryTest.CacheHashCode
 
 open System.Collections.Generic
 
 module private Helpers =
 
-    [<Struct>]
-    type Status =
-        {
-            Value : sbyte
-        }
-        member s.IsTombstone = s.Value = -1y
-        member s.IsEmpty = s.Value = 0y
-        member s.IsOccupied = s.Value = 1y
-        member s.IsAvailable = s.Value <= 0y
-        static member empty = { Value = 0y }
-        static member occupied = { Value = 1y }
-        static member tombstone = { Value = -1y }
+    [<RequireQualifiedAccess>]
+    module HashCode =
+        let empty = -1
+        let tombstone = -2
     
     [<Struct>]
     type Slot<'Key, 'Value> =
         {
-            mutable Status : Status
+            mutable HashCode : int
             mutable Key : 'Key
             mutable Value : 'Value
         }
+        member s.IsTombstone = s.HashCode = -1
+        member s.IsEmpty = s.HashCode = -2
+        member s.IsOccupied = s.HashCode >= 0
+        member s.IsAvailable = s.HashCode < 0
         
     module Slot =
         
         let empty<'Key, 'Value> =
             {
-                Status = Status.empty
+                HashCode = -1
                 Key = Unchecked.defaultof<'Key>
                 Value = Unchecked.defaultof<'Value>
             }
@@ -47,54 +43,61 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let mutable slotMask = slots.Length - 1
     
     // This relies on the number of slots being a power of 2
-    let computeSlotIndex (key: 'Key) =
-        let h = EqualityComparer<'Key>.Default.GetHashCode key
-        h &&& slotMask
+    let computeHashCode (key: 'Key) =
+        EqualityComparer.Default.GetHashCode key
+        
+    let computeSlotIndex (hashCode: int) =
+        hashCode &&& slotMask
 
             
     let addEntry (key: 'Key) (value: 'Value) =
         
-        let rec loop (slotIdx: int) =
+        let rec loop (hashCode: int) (slotIdx: int) =
             if slotIdx < slots.Length then
                 let slot = &slots[slotIdx]
                 // Check if slot is Empty or a Tombstone
-                if slot.Status.IsAvailable then
-                    slot.Status <- Status.occupied
+                if slot.IsAvailable then
+                    slot.HashCode <- hashCode
                     slot.Key <- key
                     slot.Value <- value
                     count <- count + 1
                 else
                     // If we reach here, we know the slot is occupied
-                    if EqualityComparer.Default.Equals (key, slot.Key) then
+                    if EqualityComparer.Default.Equals (hashCode, slot.HashCode) &&
+                       EqualityComparer.Default.Equals (key, slot.Key) then
                         slot.Value <- value
                     else
-                        loop (slotIdx + 1)
+                        loop hashCode (slotIdx + 1)
             else
                 // Start over looking from the beginning of the slots
-                loop 0
+                loop hashCode 0
                 
-        let slotIdx = computeSlotIndex key
-        loop slotIdx
+        let hashCode = computeHashCode key
+        let slotIdx = computeSlotIndex hashCode
+        loop hashCode slotIdx
 
+    
     let getValue (key: 'Key) =
         
-        let rec loop (slotIdx: int) =
+        let rec loop (hashCode: int) (slotIdx: int) =
             if slotIdx < slots.Length then
                 let slot = &slots[slotIdx]
-                if slot.Status.IsOccupied then
-                    if EqualityComparer.Default.Equals (key, slot.Key) then
+                if slot.IsOccupied then
+                    if EqualityComparer.Default.Equals (hashCode, slot.HashCode) &&
+                       EqualityComparer.Default.Equals (key, slot.Key) then
                         slot.Value
                     else
-                        loop (slotIdx + 1)
-                elif slot.Status.IsTombstone then
-                    loop (slotIdx + 1)
+                        loop hashCode (slotIdx + 1)
+                elif slot.IsTombstone then
+                    loop hashCode (slotIdx + 1)
                 else
                     raise (KeyNotFoundException())
             else
-                loop 0
+                loop hashCode 0
         
-        let slotIdx = computeSlotIndex key
-        loop slotIdx
+        let hashCode = computeHashCode key
+        let slotIdx = computeSlotIndex hashCode
+        loop hashCode slotIdx
         
                     
     let resize () =
@@ -109,7 +112,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             count <- 0
             
             for slot in oldSlots do
-                if slot.Status.IsOccupied then
+                if slot.IsOccupied then
                     addEntry slot.Key slot.Value
         
     do
@@ -125,5 +128,3 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         and set (key: 'Key) (value: 'Value) =
                 addEntry key value
                 resize()
-    
-    

@@ -7,6 +7,8 @@ open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Running
 open FastDictionaryTest
 
+type Key = { Value : int }
+
 [<MemoryDiagnoser>]
 [<HardwareCounters(HardwareCounter.CacheMisses,
                    HardwareCounter.BranchInstructions,
@@ -14,14 +16,15 @@ open FastDictionaryTest
 type Benchmarks () =
     
     let rng = Random 123
+    let minKey = -1_000_000_000
     let maxKey = 1_000_000_000
     let maxValue = 1_000_000
-    let valueCount = 1024
+    let valueCount = 1000
     let lookupCount = 10_000
     
     let data =
-        [ for i in 1 .. valueCount ->
-            rng.Next maxKey, rng.Next maxValue ]    
+        [| for _ in 1 .. valueCount ->
+             { Value = rng.Next (minKey, maxKey) }, rng.Next maxValue |]    
     
     let keys =
         [| for _ in 1 .. lookupCount ->
@@ -31,12 +34,12 @@ type Benchmarks () =
     let testMap = Map data
     let testDictionary =
         data
-        |> List.map KeyValuePair
+        |> Array.map KeyValuePair
         |> Dictionary
     
     let testReadOnlyDictionary =
         data
-        |> List.map KeyValuePair
+        |> Array.map KeyValuePair
         |> Dictionary
         |> ReadOnlyDictionary
     
@@ -58,7 +61,7 @@ type Benchmarks () =
 
         acc
 
-    [<Benchmark>]
+    [<Benchmark(Description = ".NET Dictionary")>]
     member _.Dictionary () =
         let mutable acc = 0
         
@@ -94,7 +97,7 @@ type Benchmarks () =
 
         acc
 
-    [<Benchmark>]
+    [<Benchmark(Description = "Separate Chaining v1")>]
     member _.OpenChaining () =
         let mutable acc = 0
         
@@ -103,7 +106,7 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark>]
+    [<Benchmark(Description = "Separate Chaining v2")>]
     member _.ZeroAllocList () =
         let mutable acc = 0
         
@@ -121,7 +124,7 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark>]
+    [<Benchmark(Description = "Embedded Head Separate Chaining")>]
     member _.EmbeddedHead () =
         let mutable acc = 0
         
@@ -130,7 +133,7 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark>]
+    [<Benchmark(Description = "Linear Probing")>]
     member _.LinearProbing () =
         let mutable acc = 0
         
@@ -175,6 +178,10 @@ let profile (version: string) loopCount =
     | "embeddedhead" ->
         for _ in 1 .. loopCount do
             result <- b.EmbeddedHead()
+            
+    | "linearprobing" ->
+        for _ in 1 .. loopCount do
+            result <- b.LinearProbing()
         
     | unknownVersion -> failwith $"Unknown version: {unknownVersion}" 
             

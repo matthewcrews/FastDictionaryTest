@@ -11,6 +11,7 @@
         <Compile Include="Arrays.fs"/>
         <Compile Include="EmbeddedHead.fs"/>
         <Compile Include="LinearProbing.fs"/>
+        <Compile Include="CacheHashCode.fs"/>
     </ItemGroup>
 
 </Project>
