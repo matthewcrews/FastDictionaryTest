@@ -7,6 +7,20 @@ open BenchmarkDotNet.Attributes
 open BenchmarkDotNet.Running
 open FastDictionaryTest
 
+
+type CountKey =
+    | ``10`` = 0
+    | ``100`` = 1
+    | ``1_000`` = 2
+    | ``10_000`` = 3
+
+let valueCounts = [|
+    CountKey.``10``, 10
+    CountKey.``100``, 100
+    CountKey.``1_000``, 1_000
+    CountKey.``10_000``, 10_000
+|]
+
 type Key = { Value : int }
 
 [<MemoryDiagnoser>]
@@ -19,137 +33,213 @@ type Benchmarks () =
     let minKey = -1_000_000_000
     let maxKey = 1_000_000_000
     let maxValue = 1_000_000
-    let valueCount = 1000
-    let lookupCount = 10_000
+    let lookupCount = 1_000
     
-    let data =
-        [| for _ in 1 .. valueCount ->
-             { Value = rng.Next (minKey, maxKey) }, rng.Next maxValue |]    
+    let dataSets =
+        [| for countKey, count in valueCounts ->
+            [| for _ in 1 .. count ->
+                 { Value = rng.Next (minKey, maxKey) }, rng.Next maxValue |]
+                 // rng.Next (minKey, maxKey), rng.Next maxValue |]
+            |> Array.distinctBy fst
+        |]
     
     let keys =
-        [| for _ in 1 .. lookupCount ->
-            // Next is exclusive on the upper bound
-            fst data[rng.Next valueCount] |]
+        [| for countKey, count in valueCounts ->
+            let data = dataSets[int countKey]
+            [| for _ in 1 .. lookupCount ->
+                // Next is exclusive on the upper bound
+                fst data[rng.Next count] |]
+        |]
     
-    let testMap = Map data
-    let testDictionary =
-        data
-        |> Array.map KeyValuePair
-        |> Dictionary
+    let testMaps =
+        [| for countKey, _ in valueCounts ->
+            Map dataSets[int countKey]
+        |]
+        
+    let testDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> Array.map KeyValuePair
+            |> Dictionary
+        |]
+        
+    let testReadOnlyDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> Array.map KeyValuePair
+            |> Dictionary
+            |> ReadOnlyDictionary
+        |]
     
-    let testReadOnlyDictionary =
-        data
-        |> Array.map KeyValuePair
-        |> Dictionary
-        |> ReadOnlyDictionary
-    
-    let testDict = dict data
-    let testReadOnlyDict = readOnlyDict data
+    let testDicts =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> dict
+        |]
+        
+    let testReadOnlyDicts =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> readOnlyDict
+        |]
 
-    let naiveDictionary = OpenChaining.Dictionary data
-    let zeroAllocDictionary = ZeroAlloc.Dictionary data
-    let arraysDictionary = Arrays.Dictionary data
-    let embeddedHeadDictionary = EmbeddedHead.Dictionary data
-    let linearProbingDictionary = LinearProbing.Dictionary data
-    let cacheHashCodeDictionary = CacheHashCode.Dictionary data
-    
+    let naiveDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> OpenChaining.Dictionary
+        |]
+
+    let zeroAllocDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> ZeroAlloc.Dictionary
+        |]
+
+    let arraysDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> Arrays.Dictionary
+        |]
+
+    let embeddedHeadDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> EmbeddedHead.Dictionary
+        |]
+
+    let linearProbingDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> LinearProbing.Dictionary
+        |]
+    let cacheHashCodeDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> CacheHashCode.Dictionary
+        |]
+
+    [<Params(CountKey.``10``, CountKey.``100``, CountKey.``1_000``, CountKey.``10_000``)>]
+    member val CountKey = CountKey.``10`` with get, set
+        
     // [<Benchmark>]
-    member _.Map () =
+    member b.Map () =
+        let data = testMaps[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + testMap[k]
+            acc <- acc + data[k]
 
         acc
 
     [<Benchmark(Description = ".NET Dictionary")>]
-    member _.Dictionary () =
+    member b.Dictionary () =
+        let data = testDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + testDictionary[k]
+            acc <- acc + data[k]
 
         acc
-        
+
     // [<Benchmark>]
-    member _.ReadOnlyDictionary () =
+    member b.ReadOnlyDictionary () =
+        let data = testReadOnlyDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + testReadOnlyDictionary[k]
+            acc <- acc + data[k]
 
         acc
-        
+
     // [<Benchmark(Description = "dict")>]
-    member _.Dict () =
+    member b.Dict () =
+        let data = testDicts[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + testDict[k]
+            acc <- acc + data[k]
 
         acc
-        
+
     // [<Benchmark(Description = "readOnlyDict")>]
-    member _.ReadOnlyDict () =
+    member b.ReadOnlyDict () =
+        let data = testReadOnlyDicts[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + testReadOnlyDict[k]
+            acc <- acc + data[k]
 
         acc
 
-    [<Benchmark(Description = "Separate Chaining v1")>]
-    member _.OpenChaining () =
+    // [<Benchmark(Description = "Separate Chaining v1")>]
+    member b.OpenChaining () =
+        let data = naiveDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + naiveDictionary[k]
+            acc <- acc + data[k]
 
         acc
-        
-    [<Benchmark(Description = "Separate Chaining v2")>]
-    member _.ZeroAllocList () =
+
+    // [<Benchmark(Description = "Separate Chaining v2")>]
+    member b.ZeroAllocList () =
+        let data = zeroAllocDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + zeroAllocDictionary[k]
+            acc <- acc + data[k]
 
         acc
-        
+
     // [<Benchmark>]
-    member _.Arrays () =
+    member b.Arrays () =
+        let data = arraysDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + arraysDictionary[k]
+            acc <- acc + data[k]
 
         acc
-        
-    [<Benchmark(Description = "Embedded Head Separate Chaining")>]
-    member _.EmbeddedHead () =
+
+    // [<Benchmark(Description = "Embedded Head Separate Chaining")>]
+    member b.EmbeddedHead () =
+        let data = embeddedHeadDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + embeddedHeadDictionary[k]
+            acc <- acc + data[k]
 
         acc
-        
+
     [<Benchmark(Description = "Linear Probing")>]
-    member _.LinearProbing () =
+    member b.LinearProbing () =
+        let data = linearProbingDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + linearProbingDictionary[k]
-    
+            acc <- acc + data[k]
+
         acc
-        
+
     [<Benchmark(Description = "Cache HashCode")>]
-    member _.CacheHashCode () =
+    member b.CacheHashCode () =
+        let data = cacheHashCodeDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
         let mutable acc = 0
         
         for k in keys do
-            acc <- acc + cacheHashCodeDictionary[k]
-    
+            acc <- acc + data[k]
+
         acc
 
 
