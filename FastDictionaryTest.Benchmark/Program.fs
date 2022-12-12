@@ -126,16 +126,22 @@ type Benchmarks () =
             dataSets[int countKey]
             |> CacheHashCode.Dictionary
         |]
+        
+    let avxDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> Avx.Dictionary
+        |]
 
     [<Params(
-        CountKey.``10``,
-        CountKey.``20``,
-        CountKey.``100``,
-        CountKey.``200``,
-        CountKey.``1_000``,
-        CountKey.``2_000``,
-        CountKey.``10_000``,
-        CountKey.``20_000``
+        CountKey.``10``
+        // CountKey.``20``,
+        // CountKey.``100``,
+        // CountKey.``200``,
+        // CountKey.``1_000``,
+        // CountKey.``2_000``,
+        // CountKey.``10_000``,
+        // CountKey.``20_000``
         )>]
     member val CountKey = CountKey.``100`` with get, set
         
@@ -252,6 +258,17 @@ type Benchmarks () =
     [<Benchmark(Description = "Cache HashCode")>]
     member b.CacheHashCode () =
         let data = cacheHashCodeDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + data[k]
+
+        acc
+        
+    [<Benchmark(Description = "Cache HashCode")>]
+    member b.Avx () =
+        let data = avxDictionaries[int b.CountKey]
         let keys = keys[int b.CountKey]
         let mutable acc = 0
         
