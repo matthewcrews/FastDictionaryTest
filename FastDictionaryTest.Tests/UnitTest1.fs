@@ -98,3 +98,15 @@ let ``CacheHashCode Dictionary matches`` () =
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = naiveDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
+        
+[<Test>]
+let ``Avx Dictionary matches`` () =
+    
+    let naiveDictionary = Avx.Dictionary data
+    
+    for k, v in data do
+        naiveDictionary[k] <- v
+    
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = naiveDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)

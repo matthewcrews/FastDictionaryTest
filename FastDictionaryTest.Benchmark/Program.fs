@@ -9,18 +9,27 @@ open FastDictionaryTest
 
 
 type CountKey =
-    | ``10`` = 0
-    | ``100`` = 1
-    | ``1_000`` = 2
-    | ``10_000`` = 3
+    | ``10``     = 0
+    | ``20``     = 1
+    | ``100``    = 2
+    | ``200``    = 3
+    | ``1_000``  = 4
+    | ``2_000``  = 5
+    | ``10_000`` = 6
+    | ``20_000`` = 7
 
 let valueCounts = [|
-    CountKey.``10``, 10
-    CountKey.``100``, 100
-    CountKey.``1_000``, 1_000
-    CountKey.``10_000``, 10_000
+    CountKey.``10``     , 10
+    CountKey.``20``     , 20
+    CountKey.``100``    , 100
+    CountKey.``200``    , 200
+    CountKey.``1_000``  , 1_000
+    CountKey.``2_000``  , 2_000
+    CountKey.``10_000`` , 10_000
+    CountKey.``20_000`` , 20_000
 |]
 
+[<Struct>]
 type Key = { Value : int }
 
 [<MemoryDiagnoser>]
@@ -36,7 +45,7 @@ type Benchmarks () =
     let lookupCount = 1_000
     
     let dataSets =
-        [| for countKey, count in valueCounts ->
+        [| for _, count in valueCounts ->
             [| for _ in 1 .. count ->
                  { Value = rng.Next (minKey, maxKey) }, rng.Next maxValue |]
                  // rng.Next (minKey, maxKey), rng.Next maxValue |]
@@ -118,8 +127,17 @@ type Benchmarks () =
             |> CacheHashCode.Dictionary
         |]
 
-    [<Params(CountKey.``10``, CountKey.``100``, CountKey.``1_000``, CountKey.``10_000``)>]
-    member val CountKey = CountKey.``10`` with get, set
+    [<Params(
+        CountKey.``10``,
+        CountKey.``20``,
+        CountKey.``100``,
+        CountKey.``200``,
+        CountKey.``1_000``,
+        CountKey.``2_000``,
+        CountKey.``10_000``,
+        CountKey.``20_000``
+        )>]
+    member val CountKey = CountKey.``100`` with get, set
         
     // [<Benchmark>]
     member b.Map () =
@@ -220,7 +238,7 @@ type Benchmarks () =
 
         acc
 
-    [<Benchmark(Description = "Linear Probing")>]
+    // [<Benchmark(Description = "Linear Probing")>]
     member b.LinearProbing () =
         let data = linearProbingDictionaries[int b.CountKey]
         let keys = keys[int b.CountKey]
@@ -282,6 +300,10 @@ let profile (version: string) loopCount =
     | "linearprobing" ->
         for _ in 1 .. loopCount do
             result <- b.LinearProbing()
+            
+    | "cachehashcode" ->
+        for _ in 1 .. loopCount do
+            result <- b.CacheHashCode()
         
     | unknownVersion -> failwith $"Unknown version: {unknownVersion}" 
             

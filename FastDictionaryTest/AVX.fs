@@ -1,10 +1,15 @@
-﻿namespace FastDictionaryTest.CacheHashCode
+﻿namespace FastDictionaryTest.Avx
 
-open System
+open System.Runtime.Intrinsics
 open System.Collections.Generic
+open System.Runtime.Intrinsics.X86
+
+#nowarn "42"
 
 module private Helpers =
 
+    let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
+    
     [<RequireQualifiedAccess>]
     module HashCode =
         let empty = -1
@@ -35,10 +40,6 @@ open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
-    #if DEBUG
-    let logFile = "logs.txt"
-    #endif
-    
     // Track the number of items in Dictionary for resize
     let mutable count = 0
     // Create the Buckets with some initial capacity
@@ -85,43 +86,52 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     
     let getValue (key: 'Key) =
         
-        #if DEBUG
-        let mutable searchDepth = 0
-        #endif
-        
         let rec loop (hashCode: int) (slotIdx: int) =
             if slotIdx < slots.Length then
-                // let slots[slotIdx] = &slots[slotIdx]
                 if slots[slotIdx].IsOccupied then
                     if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
                        EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
-                        #if DEBUG
-                        IO.File.AppendAllText(logFile, $"{searchDepth}{Environment.NewLine}")
-                        #endif
                         slots[slotIdx].Value
                         
                     else
-                        #if DEBUG
-                        searchDepth <- searchDepth + 1
-                        #endif
-                        
                         loop hashCode (slotIdx + 1)
                         
                 elif slots[slotIdx].IsTombstone then
-                    #if DEBUG
-                    searchDepth <- searchDepth + 1
-                    #endif
-                    
                     loop hashCode (slotIdx + 1)
                     
                 else
                     raise (KeyNotFoundException())
             else
                 loop hashCode 0
+                
+        let avxStep (hashCode: int) (slotIdx: int) =
+            if slotIdx < slots.Length - 4 then
+                let hashCodeVec = Vector128.Create hashCode
+                let slotsHashCodeVec = Vector128.Create (
+                    slots[slotIdx].HashCode,
+                    slots[slotIdx + 1].HashCode,
+                    slots[slotIdx + 2].HashCode,
+                    slots[slotIdx + 3].HashCode
+                    )
+                
+                let compareResult =
+                    Sse2.CompareEqual (hashCodeVec, slotsHashCodeVec)
+                    |> retype<_, Vector128<float32>>
+                let moveMask = Sse2.MoveMask compareResult
+                let offset = System.Numerics.BitOperations.TrailingZeroCount moveMask
+                
+                if offset <= 3 &&
+                   EqualityComparer.Default.Equals (key, slots[slotIdx + offset].Key) then
+                    slots[slotIdx + offset].Value
+                else
+                    loop hashCode slotIdx
+            else
+                loop hashCode slotIdx
+            
         
         let hashCode = computeHashCode key
         let slotIdx = computeSlotIndex hashCode
-        loop hashCode slotIdx
+        avxStep hashCode slotIdx
         
                     
     let resize () =
