@@ -4,7 +4,7 @@ open System.Runtime.Intrinsics
 open System.Collections.Generic
 open System.Runtime.Intrinsics.X86
 
-//#nowarn "42"
+#nowarn "42"
 
 module Domain =
 
@@ -230,4 +230,4 @@ type DictionaryX<'KeyS, 'KeyR, 'Value
 
         and set (key: 'KeyR) (value: 'Value) =
                 Logic.AddEntry (key, value, internalsR)
-                Logic.Resize internalsS
+                Logic.Resize internalsR

@@ -138,16 +138,23 @@ type Benchmarks () =
             dataSets[int countKey]
             |> Avx2.Dictionary
         |]
+        
+    let bizarreDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> Bizarre.DictionaryX.ofSeq
+        |]
+
 
     [<Params(
         CountKey.``10``
-        , CountKey.``20``
-        , CountKey.``100``
-        , CountKey.``200``
-        , CountKey.``1_000``
-        , CountKey.``2_000``
-        , CountKey.``10_000``
-        , CountKey.``20_000``
+        // , CountKey.``20``
+        // , CountKey.``100``
+        // , CountKey.``200``
+        // , CountKey.``1_000``
+        // , CountKey.``2_000``
+        // , CountKey.``10_000``
+        // , CountKey.``20_000``
         )>]
     member val CountKey = CountKey.``100`` with get, set
         
@@ -286,6 +293,17 @@ type Benchmarks () =
     [<Benchmark(Description = "Avx2")>]
     member b.Avx2 () =
         let data = avx2Dictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + data[k]
+
+        acc
+        
+    [<Benchmark(Description = "Bizarre")>]
+    member b.Bizarre () =
+        let data = bizarreDictionaries[int b.CountKey]
         let keys = keys[int b.CountKey]
         let mutable acc = 0
         
