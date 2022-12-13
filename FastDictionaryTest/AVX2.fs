@@ -6,7 +6,7 @@ open System.Runtime.Intrinsics.X86
 
 #nowarn "42"
 
-module private Helpers =
+module private Domain =
 
     let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
     
@@ -36,7 +36,7 @@ module private Helpers =
                 Value = Unchecked.defaultof<'Value>
             }
 
-open Helpers
+open Domain
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =

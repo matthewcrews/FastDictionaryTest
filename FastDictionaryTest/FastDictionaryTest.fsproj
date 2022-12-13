@@ -14,6 +14,7 @@
         <Compile Include="CacheHashCode.fs"/>
         <Compile Include="AVX.fs"/>
         <Compile Include="AVX2.fs"/>
+        <Compile Include="Bizarre.fs"/>
     </ItemGroup>
 
 </Project>
