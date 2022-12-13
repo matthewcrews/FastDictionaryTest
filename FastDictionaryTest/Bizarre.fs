@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.Avx2
+﻿namespace FastDictionaryTest.Bizarre
 
 open System.Runtime.Intrinsics
 open System.Collections.Generic
