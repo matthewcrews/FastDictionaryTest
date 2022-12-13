@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.Avx
+﻿namespace FastDictionaryTest.Avx2
 
 open System.Runtime.Intrinsics
 open System.Collections.Generic
@@ -24,7 +24,7 @@ module private Helpers =
         }
         member s.IsTombstone = s.HashCode = -1
         member s.IsEmpty = s.HashCode = -2
-        member s.IsOccupied = s.HashCode >= 0
+        member s.IsOccupied = s.HashCode >= -1
         member s.IsAvailable = s.HashCode < 0
         
     module Slot =
@@ -40,6 +40,8 @@ open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
+    // Type flag
+    let isStruct = typeof<'Key>.IsValueType
     // Track the number of items in Dictionary for resize
     let mutable count = 0
     // Create the Buckets with some initial capacity
@@ -86,25 +88,36 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     
     let getValue (key: 'Key) =
         
-        let rec loop (hashCode: int) (slotIdx: int) =
+        let hashCode = computeHashCode key
+        
+        let rec loop (slotIdx: int) =
             if slotIdx < slots.Length then
-                if slots[slotIdx].IsOccupied then
-                    if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
-                       EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
-                        slots[slotIdx].Value
-                        
-                    else
-                        loop hashCode (slotIdx + 1)
-                        
-                elif slots[slotIdx].IsTombstone then
-                    loop hashCode (slotIdx + 1)
-                    
+                if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
+                   EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
+                       slots[slotIdx].Value
+                elif slots[slotIdx].IsOccupied then
+                    loop (slotIdx + 1)
                 else
                     raise (KeyNotFoundException())
-            else
-                loop hashCode 0
                 
-        let avxStep (hashCode: int) (slotIdx: int) =
+                //
+                // if slots[slotIdx].IsOccupied then
+                //     if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
+                //        EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
+                //         slots[slotIdx].Value
+                //         
+                //     else
+                //         loop (slotIdx + 1)
+                //         
+                // elif slots[slotIdx].IsTombstone then
+                //     loop (slotIdx + 1)
+                //     
+                // else
+                //     raise (KeyNotFoundException())
+            else
+                loop 0
+                
+        let avxStep (slotIdx: int) =
             if slotIdx < slots.Length - 4 then
                 let hashCodeVec = Vector128.Create hashCode
                 let slotsHashCodeVec = Vector128.Create (
@@ -124,14 +137,16 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                    EqualityComparer.Default.Equals (key, slots[slotIdx + offset].Key) then
                     slots[slotIdx + offset].Value
                 else
-                    loop hashCode slotIdx
+                    loop slotIdx
             else
-                loop hashCode slotIdx
+                loop slotIdx
             
         
-        let hashCode = computeHashCode key
         let slotIdx = computeSlotIndex hashCode
-        avxStep hashCode slotIdx
+        if isStruct then
+            loop slotIdx
+        else
+            avxStep slotIdx
         
                     
     let resize () =
@@ -157,7 +172,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     new () = Dictionary<'Key, 'Value>([])
             
     member d.Item
-        with get (key: 'Key ) = getValue key
+        with get (key: 'Key) = getValue key
             
         and set (key: 'Key) (value: 'Value) =
                 addEntry key value

@@ -29,7 +29,7 @@ let valueCounts = [|
     CountKey.``20_000`` , 20_000
 |]
 
-[<Struct>]
+// [<Struct>]
 type Key = { Value : int }
 
 [<MemoryDiagnoser>]
@@ -132,16 +132,22 @@ type Benchmarks () =
             dataSets[int countKey]
             |> Avx.Dictionary
         |]
+        
+    let avx2Dictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> Avx2.Dictionary
+        |]
 
     [<Params(
         CountKey.``10``
-        // CountKey.``20``,
-        // CountKey.``100``,
-        // CountKey.``200``,
-        // CountKey.``1_000``,
-        // CountKey.``2_000``,
-        // CountKey.``10_000``,
-        // CountKey.``20_000``
+        , CountKey.``20``
+        , CountKey.``100``
+        , CountKey.``200``
+        , CountKey.``1_000``
+        , CountKey.``2_000``
+        , CountKey.``10_000``
+        , CountKey.``20_000``
         )>]
     member val CountKey = CountKey.``100`` with get, set
         
@@ -266,9 +272,20 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark(Description = "Cache HashCode")>]
+    [<Benchmark(Description = "Avx")>]
     member b.Avx () =
         let data = avxDictionaries[int b.CountKey]
+        let keys = keys[int b.CountKey]
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + data[k]
+
+        acc
+        
+    [<Benchmark(Description = "Avx2")>]
+    member b.Avx2 () =
+        let data = avx2Dictionaries[int b.CountKey]
         let keys = keys[int b.CountKey]
         let mutable acc = 0
         

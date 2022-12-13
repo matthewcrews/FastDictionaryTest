@@ -110,3 +110,15 @@ let ``Avx Dictionary matches`` () =
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = naiveDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
+        
+[<Test>]
+let ``Avx2 Dictionary matches`` () =
+    
+    let naiveDictionary = Avx2.Dictionary data
+    
+    for k, v in data do
+        naiveDictionary[k] <- v
+    
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = naiveDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)

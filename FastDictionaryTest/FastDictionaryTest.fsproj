@@ -13,6 +13,7 @@
         <Compile Include="LinearProbing.fs"/>
         <Compile Include="CacheHashCode.fs"/>
         <Compile Include="AVX.fs"/>
+        <Compile Include="AVX2.fs"/>
     </ItemGroup>
 
 </Project>
