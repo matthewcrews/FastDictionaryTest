@@ -4,15 +4,15 @@ open System.Runtime.Intrinsics
 open System.Collections.Generic
 open System.Runtime.Intrinsics.X86
 
-#nowarn "42"
+//#nowarn "42"
 
-module private Domain =
+module Domain =
 
     type IPriority1 = interface end
     type IPriority2 = interface end
     
     let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
-    
+
     [<RequireQualifiedAccess>]
     module HashCode =
         let empty = -1
@@ -29,6 +29,7 @@ module private Domain =
         member s.IsEmpty = s.HashCode = -2
         member s.IsOccupied = s.HashCode >= -1
         member s.IsAvailable = s.HashCode < 0
+        member s.IsEntry = s.HashCode >= 0
         
     module Slot =
         
@@ -61,14 +62,14 @@ module private Domain =
             let initialCapacity = 4
             {
                 Count = 0
-                Slots = Array.create initialCapacity Slot.empty
+                Slots = Array.create initialCapacity Slot.empty<'Key, 'Value>
                 SlotMask = initialCapacity - 1
             }
 
     [<RequireQualifiedAccess>]
-    type Logic () =
+    type Logic =
         
-        static member inline AddEntry< ^Key, ^Value> (key: ^Key, value: ^Value, internals: Internals< ^Key, ^Value>) =
+        static member AddEntry< 'Key, 'Value> (key: 'Key, value: 'Value, internals: Internals< 'Key, 'Value>) =
             let slots = internals.Slots
             
             let rec loop (hashCode: int) (slotIdx: int) =
@@ -82,7 +83,7 @@ module private Domain =
                     else
                         // If we reach here, we know the slot is occupied
                         if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
-                           EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
+                            EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
                             slots[slotIdx].Value <- value
                         else
                             loop hashCode (slotIdx + 1)
@@ -95,15 +96,15 @@ module private Domain =
             loop hashCode slotIdx
         
         
-        static member inline GetValue< ^Key when ^Key : struct> (key: ^Key, internals: Internals< ^Key, ^Value>, ?priority: IPriority1) : ^Value =
+        static member GetValue<'Key, 'Value when 'Key: struct> (key: 'Key, internals: Internals< 'Key, 'Value>, ?priority: IPriority1) : 'Value =
             let slots = internals.Slots
             let hashCode = computeHashCode key
             
             let rec loop (slotIdx: int) =
                 if slotIdx < slots.Length then
                     if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
-                       EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
-                           slots[slotIdx].Value
+                        EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
+                            slots[slotIdx].Value
                     elif slots[slotIdx].IsOccupied then
                         loop (slotIdx + 1)
 
@@ -117,7 +118,7 @@ module private Domain =
             loop slotIdx
             
             
-        static member inline GetValue< ^Key>(key: ^Key, internals: Internals< ^Key, ^Value>, ?priority: IPriority2) : ^Value =
+        static member GetValue<'Key, 'Value when 'Key: not struct>(key: 'Key, internals: Internals< 'Key, 'Value>, ?priority: IPriority2) : 'Value =
             
             let slots = internals.Slots
             let hashCode = computeHashCode key
@@ -125,8 +126,8 @@ module private Domain =
             let rec loop (slotIdx: int) =
                 if slotIdx < slots.Length then
                     if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
-                       EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
-                           slots[slotIdx].Value
+                        EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
+                            slots[slotIdx].Value
                     elif slots[slotIdx].IsOccupied then
                         loop (slotIdx + 1)
 
@@ -153,7 +154,7 @@ module private Domain =
                     let offset = System.Numerics.BitOperations.TrailingZeroCount moveMask
                     
                     if offset <= 3 &&
-                       EqualityComparer.Default.Equals (key, slots[slotIdx + offset].Key) then
+                        EqualityComparer.Default.Equals (key, slots[slotIdx + offset].Key) then
                         slots[slotIdx + offset].Value
                     else
                         loop slotIdx
@@ -164,7 +165,7 @@ module private Domain =
             avxStep slotIdx
             
             
-        static member Resize (internals: Internals< ^Key, ^Value>) =
+        static member Resize<'Key, 'Value> (internals: Internals< 'Key, 'Value>) =
             // Resize if our fill is >75%
             if internals.Count > (internals.Slots.Length >>> 2) * 3 then
             // if count > slots.Length - 2 then
@@ -176,25 +177,57 @@ module private Domain =
                 internals.Count <- 0
                 
                 for slot in oldSlots do
-                    if slot.IsOccupied then
+                    if slot.IsEntry then
                         Logic.AddEntry (slot.Key, slot.Value, internals)
-                        
-                        
                         
 open Domain
 
-
-type Dictionary<'Key, 'Value when 'Key : equality> private (internals: Internals<'Key, 'Value>) =
+type DictionaryX<'KeyS, 'KeyR, 'Value
+    when 'KeyS : equality
+    and 'KeyS: struct
+    and 'KeyR : equality
+    and 'KeyR: not struct>
+    private (internalsS: Internals<'KeyS, 'Value>, internalsR: Internals<'KeyR, 'Value>) =
     
-    new () =
-        let internals : Internals<'Key, 'Value> = Internals.empty
-        Dictionary internals
+    // new () =
+    //     let internalsS : Internals<'KeyS, 'Value> = Internals.empty
+    //     let internalsR : Internals<'KeyR, 'Value> = Internals.empty
+    //     DictionaryX(internalsS, internalsR)
+    
+    
+    static member ofSeq (entries: seq<'KeyS * 'Value>) =
+        let internalsS : Internals<'KeyS, 'Value> = Internals.empty
+        let internalsR : Internals<'KeyR, 'Value> = Unchecked.defaultof<_>
+        let d = DictionaryX<'KeyS, 'KeyR, 'Value>(internalsS, internalsR)
+        do
+            for k, v in entries do
+                Logic.AddEntry (k, v, internalsS)
+                Logic.Resize internalsS
+        d
+        
+    static member ofSeq (entries: seq<'KeyR * 'Value>) =
+        let internalsS : Internals<'KeyS, 'Value> = Unchecked.defaultof<_>
+        let internalsR : Internals<'KeyR, 'Value> = Internals.empty
+        let d = DictionaryX<'KeyS, 'KeyR, 'Value>(internalsS, internalsR)
+        do
+            for k, v in entries do
+                Logic.AddEntry (k, v, internalsR)
+                Logic.Resize internalsR
+        d
         
         
     member d.Item
-        with inline get (key: 'Key) =
-            Logic.GetValue (key, internals)
+        with get (key: 'KeyS) =
+            Logic.GetValue (key, internalsS)
             
-        and inline set (key: 'Key) (value: 'Value) =
-                Logic.AddEntry (key, value, internals)
-                Logic.Resize internals
+        and set (key: 'KeyS) (value: 'Value) =
+                Logic.AddEntry (key, value, internalsS)
+                Logic.Resize internalsS
+
+    member d.Item
+        with get (key: 'KeyR) =
+            Logic.GetValue (key, internalsR)
+
+        and set (key: 'KeyR) (value: 'Value) =
+                Logic.AddEntry (key, value, internalsR)
+                Logic.Resize internalsS

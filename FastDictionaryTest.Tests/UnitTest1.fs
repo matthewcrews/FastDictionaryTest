@@ -122,3 +122,12 @@ let ``Avx2 Dictionary matches`` () =
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = naiveDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
+        
+[<Test>]
+let ``Bizarre Dictionary matches`` () =
+    
+    let naiveDictionary = Bizarre.DictionaryX.ofSeq data
+    
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = naiveDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)
