@@ -1,29 +1,25 @@
-﻿namespace FastDictionaryTest.Avx2
+﻿namespace FastDictionaryTest.RobinHood
 
-open System.Runtime.Intrinsics
 open System.Collections.Generic
-open System.Runtime.Intrinsics.X86
 
-#nowarn "42"
+module private Helpers =
 
-module private Domain =
-
-    let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
-    
     [<RequireQualifiedAccess>]
     module HashCode =
-        let empty = -1
-        let tombstone = -2
+        let empty = -2
+        let tombstone = -1
     
     [<Struct>]
     type Slot<'Key, 'Value> =
         {
             mutable HashCode : int
+            mutable Offset : int
             mutable Key : 'Key
             mutable Value : 'Value
         }
-        member s.IsTombstone = s.HashCode = -1
-        member s.IsEmpty = s.HashCode = -2
+        member s.IsTombstone = s.HashCode = HashCode.tombstone
+        member s.IsEmpty = s.HashCode = HashCode.empty
+        member s.IsEntry = s.HashCode >= 0
         member s.IsOccupied = s.HashCode >= -1
         member s.IsAvailable = s.HashCode < 0
         
@@ -32,16 +28,19 @@ module private Domain =
         let empty<'Key, 'Value> =
             {
                 HashCode = -1
+                Offset = 0
                 Key = Unchecked.defaultof<'Key>
                 Value = Unchecked.defaultof<'Value>
             }
 
-open Domain
+open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
-    // Type flag
-    let isStruct = typeof<'Key>.IsValueType
+    #if DEBUG
+    let logFile = "logs.txt"
+    #endif
+    
     // Track the number of items in Dictionary for resize
     let mutable count = 0
     // Create the Buckets with some initial capacity
@@ -59,13 +58,14 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         hashCode &&& slotMask
 
             
-    let addEntry (key: 'Key) (value: 'Value) =
+    let rec addEntry (key: 'Key) (value: 'Value) =
         
-        let rec loop (hashCode: int) (slotIdx: int) =
+        let rec loop (offset: int) (hashCode: int) (slotIdx: int) =
             if slotIdx < slots.Length then
                 let slot = &slots[slotIdx]
                 // Check if slot is Empty or a Tombstone
                 if slot.IsAvailable then
+                    slot.Offset <- offset
                     slot.HashCode <- hashCode
                     slot.Key <- key
                     slot.Value <- value
@@ -75,78 +75,52 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     if EqualityComparer.Default.Equals (hashCode, slot.HashCode) &&
                        EqualityComparer.Default.Equals (key, slot.Key) then
                         slot.Value <- value
+                        
+                    // If this new value is farther from it's Home than the current entry
+                    // take the entry for the new value and re-insert the prev entry
+                    elif slot.Offset < offset then
+                        let prevKey = slot.Key
+                        let prevValue = slot.Value
+                        slot.Offset <- offset
+                        slot.HashCode <- hashCode
+                        slot.Key <- key
+                        slot.Value <- value
+                        count <- count + 1
+                        addEntry prevKey prevValue
                     else
-                        loop hashCode (slotIdx + 1)
+                        loop (offset + 1) hashCode (slotIdx + 1)
             else
                 // Start over looking from the beginning of the slots
-                loop hashCode 0
+                loop (offset + 1) hashCode 0
                 
         let hashCode = computeHashCode key
         let slotIdx = computeSlotIndex hashCode
-        loop hashCode slotIdx
+        loop 0 hashCode slotIdx
 
     
     let getValue (key: 'Key) =
-        
-        let hashCode = computeHashCode key
-        
-        let rec loop (slotIdx: int) =
+
+        let rec loop (hashCode: int) (slotIdx: int) =
             if slotIdx < slots.Length then
-                if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
-                   EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
-                       slots[slotIdx].Value
-                elif slots[slotIdx].IsOccupied then
-                    loop (slotIdx + 1)
+                if slots[slotIdx].IsEntry then
+                    if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
+                       EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
+                        slots[slotIdx].Value
+                        
+                    else
+                        loop hashCode (slotIdx + 1)
+                        
+                elif slots[slotIdx].IsTombstone then
+                    loop hashCode (slotIdx + 1)
+                    
                 else
                     raise (KeyNotFoundException())
-                
-                //
-                // if slots[slotIdx].IsOccupied then
-                //     if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
-                //        EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
-                //         slots[slotIdx].Value
-                //         
-                //     else
-                //         loop (slotIdx + 1)
-                //         
-                // elif slots[slotIdx].IsTombstone then
-                //     loop (slotIdx + 1)
-                //     
-                // else
-                //     raise (KeyNotFoundException())
             else
-                loop 0
-                
-        let avxStep (slotIdx: int) =
-            if slotIdx < slots.Length - 4 then
-                let hashCodeVec = Vector128.Create hashCode
-                let slotsHashCodeVec = Vector128.Create (
-                    slots[slotIdx].HashCode,
-                    slots[slotIdx + 1].HashCode,
-                    slots[slotIdx + 2].HashCode,
-                    slots[slotIdx + 3].HashCode
-                    )
-                
-                let compareResult =
-                    Sse2.CompareEqual (hashCodeVec, slotsHashCodeVec)
-                    |> retype<_, Vector128<float32>>
-                let moveMask = Sse2.MoveMask compareResult
-                let offset = System.Numerics.BitOperations.TrailingZeroCount moveMask
-                
-                if offset <= 3 &&
-                   EqualityComparer.Default.Equals (key, slots[slotIdx + offset].Key) then
-                    slots[slotIdx + offset].Value
-                else
-                    loop slotIdx
-            else
-                loop slotIdx
-            
+                loop hashCode 0
         
+        let hashCode = computeHashCode key
         let slotIdx = computeSlotIndex hashCode
-        if isStruct then
-            loop slotIdx
-        else
-            avxStep slotIdx
+        loop hashCode slotIdx
         
                     
     let resize () =
@@ -161,7 +135,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             count <- 0
             
             for slot in oldSlots do
-                if slot.IsOccupied then
+                if slot.IsEntry then
                     addEntry slot.Key slot.Value
         
     do

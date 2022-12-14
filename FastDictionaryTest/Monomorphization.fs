@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.Bizarre
+﻿namespace FastDictionaryTest.Monomorphization
 
 open System.Runtime.Intrinsics
 open System.Collections.Generic
@@ -48,7 +48,7 @@ module Domain =
     let computeSlotIndex (slotMask: int) (hashCode: int) =
         hashCode &&& slotMask
     
-    
+    [<Struct>]
     type Internals<'Key, 'Value> =
         {
             mutable Count : int
@@ -69,8 +69,8 @@ module Domain =
     [<RequireQualifiedAccess>]
     type Logic =
         
-        static member AddEntry< 'Key, 'Value> (key: 'Key, value: 'Value, internals: Internals< 'Key, 'Value>) =
-            let slots = internals.Slots
+        static member AddEntry< 'Key, 'Value> (key: 'Key, value: 'Value, internals: byref<Internals< 'Key, 'Value>>) =
+            let mutable slots = internals.Slots
             
             let rec loop (hashCode: int) (slotIdx: int) =
                 if slotIdx < slots.Length then
@@ -79,12 +79,13 @@ module Domain =
                         slots[slotIdx].HashCode <- hashCode
                         slots[slotIdx].Key <- key
                         slots[slotIdx].Value <- value
-                        internals.Count <- internals.Count + 1
+                        1
                     else
                         // If we reach here, we know the slot is occupied
                         if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
                             EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
                             slots[slotIdx].Value <- value
+                            0
                         else
                             loop hashCode (slotIdx + 1)
                 else
@@ -93,10 +94,10 @@ module Domain =
                     
             let hashCode = computeHashCode key
             let slotIdx = computeSlotIndex internals.SlotMask hashCode
-            loop hashCode slotIdx
+            internals.Count <- internals.Count + loop hashCode slotIdx
         
         
-        static member GetValue<'Key, 'Value when 'Key: struct> (key: 'Key, internals: Internals< 'Key, 'Value>, ?priority: IPriority1) : 'Value =
+        static member GetValue<'Key, 'Value when 'Key: struct> (key: 'Key, internals: inref<Internals< 'Key, 'Value>>, ?priority: IPriority1) : 'Value =
             let slots = internals.Slots
             let hashCode = computeHashCode key
             
@@ -118,7 +119,7 @@ module Domain =
             loop slotIdx
             
             
-        static member GetValue<'Key, 'Value when 'Key: not struct>(key: 'Key, internals: Internals< 'Key, 'Value>, ?priority: IPriority2) : 'Value =
+        static member GetValue<'Key, 'Value when 'Key: not struct>(key: 'Key, internals: inref<Internals< 'Key, 'Value>>, ?priority: IPriority2) : 'Value =
             
             let slots = internals.Slots
             let hashCode = computeHashCode key
@@ -165,7 +166,7 @@ module Domain =
             avxStep slotIdx
             
             
-        static member Resize<'Key, 'Value> (internals: Internals< 'Key, 'Value>) =
+        static member Resize<'Key, 'Value> (internals: byref<Internals< 'Key, 'Value>>) =
             // Resize if our fill is >75%
             if internals.Count > (internals.Slots.Length >>> 2) * 3 then
             // if count > slots.Length - 2 then
@@ -178,56 +179,53 @@ module Domain =
                 
                 for slot in oldSlots do
                     if slot.IsEntry then
-                        Logic.AddEntry (slot.Key, slot.Value, internals)
+                        Logic.AddEntry (slot.Key, slot.Value, &internals)
                         
 open Domain
 
-type DictionaryX<'KeyS, 'KeyR, 'Value
+type Dictionary<'KeyS, 'KeyR, 'Value
     when 'KeyS : equality
     and 'KeyS: struct
     and 'KeyR : equality
     and 'KeyR: not struct>
     private (internalsS: Internals<'KeyS, 'Value>, internalsR: Internals<'KeyR, 'Value>) =
     
-    // new () =
-    //     let internalsS : Internals<'KeyS, 'Value> = Internals.empty
-    //     let internalsR : Internals<'KeyR, 'Value> = Internals.empty
-    //     DictionaryX(internalsS, internalsR)
-    
     
     static member ofSeq (entries: seq<'KeyS * 'Value>) =
-        let internalsS : Internals<'KeyS, 'Value> = Internals.empty
-        let internalsR : Internals<'KeyR, 'Value> = Unchecked.defaultof<_>
-        let d = DictionaryX<'KeyS, 'KeyR, 'Value>(internalsS, internalsR)
+        let mutable internalsS : Internals<'KeyS, 'Value> = Internals.empty
+        let mutable internalsR : Internals<'KeyR, 'Value> = Unchecked.defaultof<_>
         do
             for k, v in entries do
-                Logic.AddEntry (k, v, internalsS)
-                Logic.Resize internalsS
-        d
+                Logic.AddEntry (k, v, &internalsS)
+                Logic.Resize &internalsS
+                
+        Dictionary<'KeyS, 'KeyR, 'Value>(internalsS, internalsR)
         
     static member ofSeq (entries: seq<'KeyR * 'Value>) =
-        let internalsS : Internals<'KeyS, 'Value> = Unchecked.defaultof<_>
-        let internalsR : Internals<'KeyR, 'Value> = Internals.empty
-        let d = DictionaryX<'KeyS, 'KeyR, 'Value>(internalsS, internalsR)
+        let mutable internalsS : Internals<'KeyS, 'Value> = Unchecked.defaultof<_>
+        let mutable internalsR : Internals<'KeyR, 'Value> = Internals.empty
         do
             for k, v in entries do
-                Logic.AddEntry (k, v, internalsR)
-                Logic.Resize internalsR
-        d
+                Logic.AddEntry (k, v, &internalsR)
+                Logic.Resize &internalsR
+                
+        Dictionary<'KeyS, 'KeyR, 'Value>(internalsS, internalsR)
         
         
     member d.Item
         with get (key: 'KeyS) =
-            Logic.GetValue (key, internalsS)
+            Logic.GetValue (key, &internalsS)
             
         and set (key: 'KeyS) (value: 'Value) =
-                Logic.AddEntry (key, value, internalsS)
-                Logic.Resize internalsS
+                let mutable internals = internalsS
+                Logic.AddEntry (key, value, &internals)
+                Logic.Resize &internals
 
     member d.Item
         with get (key: 'KeyR) =
-            Logic.GetValue (key, internalsR)
+            Logic.GetValue (key, &internalsR)
 
         and set (key: 'KeyR) (value: 'Value) =
-                Logic.AddEntry (key, value, internalsR)
-                Logic.Resize internalsR
+                let mutable internals = internalsR
+                Logic.AddEntry (key, value, &internals)
+                Logic.Resize &internals

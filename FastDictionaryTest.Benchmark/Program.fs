@@ -8,25 +8,66 @@ open BenchmarkDotNet.Running
 open FastDictionaryTest
 
 
-type CountKey =
+type KeyCount =
     | ``10``     = 0
     | ``20``     = 1
-    | ``100``    = 2
-    | ``200``    = 3
-    | ``1_000``  = 4
-    | ``2_000``  = 5
-    | ``10_000`` = 6
-    | ``20_000`` = 7
+    | ``30``     = 2
+    | ``40``     = 3
+    | ``50``     = 4
+    | ``60``     = 5
+    | ``70``     = 6
+    | ``80``     = 7
+    | ``90``     = 8
+    | ``100``    = 9
+    | ``1_000``    = 10
+    | ``2_000``    = 11
+    | ``10_000``    = 12
+    | ``20_000``    = 13
+    
+    // | ``100``    = 1
+    // | ``1_000``   = 2
+    // | ``10_000`` = 3
+    //
+    // | ``20``   = 1
+    // | ``40``   = 2
+    // | ``80``   = 3
+    // | ``160``  = 4
+    // | ``320``  = 5
+    // | ``640``  = 6
+    // | ``1280`` = 7
+
+type DataType =
+    | Int = 0
+    | Struct = 1
+    | Ref = 2
 
 let valueCounts = [|
-    CountKey.``10``     , 10
-    CountKey.``20``     , 20
-    CountKey.``100``    , 100
-    CountKey.``200``    , 200
-    CountKey.``1_000``  , 1_000
-    CountKey.``2_000``  , 2_000
-    CountKey.``10_000`` , 10_000
-    CountKey.``20_000`` , 20_000
+    KeyCount.``10``    , 10
+    KeyCount.``20``    , 20
+    KeyCount.``30``    , 30
+    KeyCount.``40``    , 40
+    KeyCount.``50``    , 50
+    KeyCount.``60``    , 60
+    KeyCount.``70``    , 70
+    KeyCount.``80``    , 80
+    KeyCount.``90``    , 90
+    KeyCount.``100``   , 100
+    KeyCount.``1_000`` , 1_000
+    KeyCount.``2_000`` , 2_000
+    KeyCount.``10_000``, 10_000
+    KeyCount.``20_000``, 20_000
+    
+    // KeyCount.``100``   , 100
+    // KeyCount.``1_000``   , 1_000
+    // KeyCount.``10_000``   , 10_000
+    //
+    // KeyCount.``20``   , 20
+    // KeyCount.``40``   , 40
+    // KeyCount.``80``   , 80
+    // KeyCount.``160``  , 160
+    // KeyCount.``320``  , 320
+    // KeyCount.``640``  , 640
+    // KeyCount.``1280`` , 1280
 |]
 
 // [<Struct>]
@@ -42,7 +83,10 @@ type Benchmarks () =
     let minKey = -1_000_000_000
     let maxKey = 1_000_000_000
     let maxValue = 1_000_000
-    let lookupCount = 1_000
+    let lookupCount = 100_000
+    
+    let vFst (struct (a, _)) = a
+    let vSnd (struct (_, b)) = b
     
     let dataSets =
         [| for _, count in valueCounts ->
@@ -130,38 +174,87 @@ type Benchmarks () =
     let avxDictionaries =
         [| for countKey, _ in valueCounts ->
             dataSets[int countKey]
-            |> Avx.Dictionary
+            |> Simd.Dictionary
         |]
         
     let avx2Dictionaries =
         [| for countKey, _ in valueCounts ->
             dataSets[int countKey]
-            |> Avx2.Dictionary
+            |> Simd2.Dictionary
         |]
         
-    let bizarreDictionaries =
+    let monomorphizationDictionaries =
         [| for countKey, _ in valueCounts ->
             dataSets[int countKey]
-            |> Bizarre.DictionaryX.ofSeq
+            |> Monomorphization.Dictionary.ofSeq
+        |]
+        
+    let lambdaDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> Lambda.Dictionary.ofSeq
+        |]
+        
+    let robinHoodDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> RobinHood.Dictionary
+        |]
+        
+    let robinHoodSimdDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> RobinHoodSimd.Dictionary
         |]
 
+    let robinHoodSimdSwitchDictionaries =
+        [| for countKey, _ in valueCounts ->
+            dataSets[int countKey]
+            |> RobinHoodSimdSwitch.Dictionary
+        |]
 
     [<Params(
-        CountKey.``10``
-        // , CountKey.``20``
-        // , CountKey.``100``
-        // , CountKey.``200``
-        // , CountKey.``1_000``
-        // , CountKey.``2_000``
-        // , CountKey.``10_000``
-        // , CountKey.``20_000``
+          KeyCount.``10``
+          , KeyCount.``20``
+          , KeyCount.``30``
+          , KeyCount.``40``
+          , KeyCount.``50``
+          , KeyCount.``60``
+          , KeyCount.``70``
+          , KeyCount.``80``
+          , KeyCount.``90``
+          , KeyCount.``100``
+          , KeyCount.``1_000``
+          , KeyCount.``2_000``
+          , KeyCount.``10_000``
+          , KeyCount.``20_000``
+          
+          // , KeyCount.``100``
+          // , KeyCount.``1_000``
+          // , KeyCount.``10_000``
+          
+        // , KeyCount.``20``
+        // , KeyCount.``40``
+        // , KeyCount.``80``
+        // , KeyCount.``160``
+        // , KeyCount.``320``
+        // , KeyCount.``640``
+        // , KeyCount.``1280``
+
         )>]
-    member val CountKey = CountKey.``100`` with get, set
+    member val KeyCount = KeyCount.``10`` with get, set
+        
+    // [<Params(
+    //       DataType.Int
+    //     , DataType.Struct
+    //     , DataType.Ref
+    //     )>]
+    // member val DataType = DataType.Int with get, set
         
     // [<Benchmark>]
     member b.Map () =
-        let data = testMaps[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = testMaps[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -171,8 +264,8 @@ type Benchmarks () =
 
     [<Benchmark(Description = ".NET Dictionary")>]
     member b.Dictionary () =
-        let data = testDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = testDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -182,8 +275,8 @@ type Benchmarks () =
 
     // [<Benchmark>]
     member b.ReadOnlyDictionary () =
-        let data = testReadOnlyDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = testReadOnlyDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -193,8 +286,8 @@ type Benchmarks () =
 
     // [<Benchmark(Description = "dict")>]
     member b.Dict () =
-        let data = testDicts[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = testDicts[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -204,8 +297,8 @@ type Benchmarks () =
 
     // [<Benchmark(Description = "readOnlyDict")>]
     member b.ReadOnlyDict () =
-        let data = testReadOnlyDicts[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = testReadOnlyDicts[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -215,8 +308,8 @@ type Benchmarks () =
 
     // [<Benchmark(Description = "Separate Chaining v1")>]
     member b.OpenChaining () =
-        let data = naiveDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = naiveDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -226,8 +319,8 @@ type Benchmarks () =
 
     // [<Benchmark(Description = "Separate Chaining v2")>]
     member b.ZeroAllocList () =
-        let data = zeroAllocDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = zeroAllocDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -237,8 +330,8 @@ type Benchmarks () =
 
     // [<Benchmark>]
     member b.Arrays () =
-        let data = arraysDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = arraysDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -248,8 +341,8 @@ type Benchmarks () =
 
     // [<Benchmark(Description = "Embedded Head Separate Chaining")>]
     member b.EmbeddedHead () =
-        let data = embeddedHeadDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = embeddedHeadDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -257,10 +350,10 @@ type Benchmarks () =
 
         acc
 
-    // [<Benchmark(Description = "Linear Probing")>]
+    // [<Benchmark(Description = "Linear Probing (LP)")>]
     member b.LinearProbing () =
-        let data = linearProbingDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = linearProbingDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -268,10 +361,10 @@ type Benchmarks () =
 
         acc
 
-    [<Benchmark(Description = "Cache HashCode")>]
+    [<Benchmark(Description = "LP + Cache #")>]
     member b.CacheHashCode () =
-        let data = cacheHashCodeDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+        let data = cacheHashCodeDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -279,10 +372,10 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark(Description = "Avx")>]
-    member b.Avx () =
-        let data = avxDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+    [<Benchmark(Description = "LP + Cache # + SIMD")>]
+    member b.Simd () =
+        let data = avxDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -290,10 +383,10 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark(Description = "Avx2")>]
-    member b.Avx2 () =
-        let data = avx2Dictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+    // [<Benchmark(Description = "LP + Cache # + SIMD + Type Switch")>]
+    member b.Simd2 () =
+        let data = avx2Dictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -301,10 +394,43 @@ type Benchmarks () =
 
         acc
         
-    [<Benchmark(Description = "Bizarre")>]
-    member b.Bizarre () =
-        let data = bizarreDictionaries[int b.CountKey]
-        let keys = keys[int b.CountKey]
+    // [<Benchmark(Description = "Monomorphization")>]
+    member b.Monomorphization () =
+        let data = monomorphizationDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + data[k]
+
+        acc
+        
+    // [<Benchmark(Description = "Lambda Monomorphization")>]
+    member b.Specialized () =
+        let data = lambdaDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + data[k]
+
+        acc
+        
+    [<Benchmark(Description = "Robin Hood (RH)")>]
+    member b.RobinHood () =
+        let data = robinHoodDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + data[k]
+
+        acc
+        
+    [<Benchmark(Description = "RH + SIMD")>]
+    member b.RobinHoodSimd () =
+        let data = robinHoodSimdDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
         let mutable acc = 0
         
         for k in keys do
@@ -312,6 +438,16 @@ type Benchmarks () =
 
         acc
 
+    // [<Benchmark(Description = "RH + SIMD + Switch")>]
+    member b.RobinHoodSimdSwitch () =
+        let data = robinHoodSimdSwitchDictionaries[int b.KeyCount]
+        let keys = keys[int b.KeyCount]
+        let mutable acc = 0
+        
+        for k in keys do
+            acc <- acc + data[k]
+
+        acc
 
 [<RequireQualifiedAccess>]
 type Args =

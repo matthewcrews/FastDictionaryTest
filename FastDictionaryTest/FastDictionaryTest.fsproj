@@ -3,6 +3,7 @@
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <Platform>x64</Platform>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,9 +13,13 @@
         <Compile Include="EmbeddedHead.fs"/>
         <Compile Include="LinearProbing.fs"/>
         <Compile Include="CacheHashCode.fs"/>
-        <Compile Include="AVX.fs"/>
-        <Compile Include="AVX2.fs"/>
-        <Compile Include="Bizarre.fs"/>
+        <Compile Include="Simd.fs"/>
+        <Compile Include="Simd2.fs"/>
+        <Compile Include="Monomorphization.fs"/>
+        <Compile Include="Specialized.fs"/>
+        <Compile Include="RobinHood.fs"/>
+        <Compile Include="RobinHoodSimd.fs"/>
+        <Compile Include="RobinHoodSimdSwitch.fs"/>
     </ItemGroup>
 
 </Project>
