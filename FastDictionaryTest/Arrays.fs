@@ -19,14 +19,14 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let mutable count = 0
     // Create the Buckets with some initial capacity
     let mutable buckets : Entry<'Key, 'Value>[][] = Array.create 4 Array.empty
-    // We want an AND mask assuming that the size of buckets will always be
-    // powers of 2
-    let mutable bucketMask = buckets.Length - 1
+    // BitShift necessary for mapping HashCode to SlotIdx using Fibonacci Hashing
+    let mutable slotBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
     
     // This relies on the size of buckets being a power of 2
     let computeBucketIndex (key: 'Key) =
         let h = EqualityComparer<'Key>.Default.GetHashCode key
-        h &&& bucketMask
+        let hashProduct = uint h * 2654435769u
+        int (hashProduct >>> slotBitShift)
         
     let getIndexForEntry (key: 'Key) (bucket: Entry<_,_>[]) =
         let mutable result = -1
@@ -80,7 +80,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             
             // Increase the size of the backing store
             buckets <- Array.create (buckets.Length <<< 1) Array.empty
-            bucketMask <- buckets.Length - 1
+            slotBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
             
             for bucket in oldBuckets do

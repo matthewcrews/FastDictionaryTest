@@ -9,20 +9,30 @@ open FastDictionaryTest
 
 
 type KeyCount =
-    | ``10``     = 0
-    | ``100``    = 1
-    | ``1_000``  = 2
-    | ``10_000`` = 3
+    | ``5``  = 0
+    | ``10``  = 1
+    | ``20``  = 2
+    | ``40``  = 3
+    | ``80``  = 4
+    | ``160``  = 5
+    | ``320``  = 6
 
 let valueCounts = [|
-    KeyCount.``10``    , 10
-    KeyCount.``100``   , 100
-    KeyCount.``1_000`` , 1_000
-    // KeyCount.``10_000``, 10_000
+    KeyCount.``5``    , 5
+    KeyCount.``10``   , 10
+    KeyCount.``20``   , 20
+    KeyCount.``40``   , 40
+    KeyCount.``80``   , 80
+    KeyCount.``160``  , 160
+    KeyCount.``320``  , 320
 |]
 
 type [<Measure>] Key
-type RefKey = { Key : int }
+[<Struct>] 
+type StructKey =
+    {
+        Key : int
+    }
 
 [<MemoryDiagnoser>]
 [<HardwareCounters(HardwareCounter.CacheMisses,
@@ -31,18 +41,18 @@ type RefKey = { Key : int }
 type Benchmarks () =
     
     let rng = Random 123
-    let minKey = -1_000_000_000
-    let maxKey = 1_000_000_000
+    let minKey = 0
+    let maxKey = 1_000
     let maxValue = 1_000_000
-    let lookupCount = 1_000
-    let testCount = 1_000
+    let lookupCount = 100
+    let testCount = 100
     
     let dataSets =
         [| for _, count in valueCounts ->
             [| for _ in 0 .. testCount - 1 ->   
                 [| for _ in 1 .. count ->
                      // rng.Next (minKey, maxKey) * 1<Key>, rng.Next maxValue |]
-                     { Key = rng.Next (minKey, maxKey) } , rng.Next maxValue |]
+                     { Key = (rng.Next (minKey, maxKey)) <<< 16 } , rng.Next maxValue |]
                 |> Array.distinctBy fst
             |]
         |]
@@ -54,7 +64,7 @@ type Benchmarks () =
                 let data = dataSets[int keyCount][testKey]
                 [| for _ in 1 .. lookupCount ->
                     // Next is exclusive on the upper bound
-                    fst data[rng.Next count] |]
+                    fst data[rng.Next data.Length] |]
             |]
         |]
     
@@ -206,12 +216,16 @@ type Benchmarks () =
         |]
     
     [<Params(
-          KeyCount.``10``
-          , KeyCount.``100``
-          , KeyCount.``1_000``
-          // , KeyCount.``10_000``
+          KeyCount.``5``
+          // , KeyCount.``10``
+          // , KeyCount.``20``
+          // , KeyCount.``40``
+          // , KeyCount.``80``
+          // , KeyCount.``160``
+          , KeyCount.``320``
+        
         )>]
-    member val KeyCount = KeyCount.``10`` with get, set
+    member val KeyCount = KeyCount.``5`` with get, set
         
         
     // [<Benchmark>]
@@ -401,7 +415,7 @@ type Benchmarks () =
     
         acc
         
-    [<Benchmark(Description = "LP/Cache#/SIMD")>]
+    // [<Benchmark(Description = "LP/Cache#/SIMD")>]
     member b.Simd () =
         let testDataSets = simdDictionaries
         
@@ -486,7 +500,7 @@ type Benchmarks () =
     
         acc
         
-    [<Benchmark(Description = "RH/Cache#/SIMD")>]
+    // [<Benchmark(Description = "RH/Cache#/SIMD")>]
     member b.RobinHoodSimd () =
         let testDataSets = robinHoodSimdDictionaries
         
@@ -544,25 +558,29 @@ let profile (version: string) loopCount =
     | "dictionary" ->
         for i in 1 .. loopCount do
             result <- b.Dictionary()
-    // | "naive" ->
-    //     for i in 1 .. loopCount do
-    //         result <- b.OpenChaining()
-    //
-    // | "zeroalloc" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.ZeroAllocList()
-    //         
-    // | "embeddedhead" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.EmbeddedHead()
-    //         
-    // | "linearprobing" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.LinearProbing()
-    //         
-    // | "cachehashcode" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.CacheHashCode()
+    | "naive" ->
+        for i in 1 .. loopCount do
+            result <- b.OpenChaining()
+    
+    | "zeroalloc" ->
+        for _ in 1 .. loopCount do
+            result <- b.ZeroAllocList()
+            
+    | "embeddedhead" ->
+        for _ in 1 .. loopCount do
+            result <- b.EmbeddedHead()
+            
+    | "linearprobing" ->
+        for _ in 1 .. loopCount do
+            result <- b.LinearProbing()
+            
+    | "cachehashcode" ->
+        for _ in 1 .. loopCount do
+            result <- b.CacheHashCode()
+            
+    | "robinhood" ->
+        for _ in 1 .. loopCount do
+            result <- b.RobinHood()
         
     | unknownVersion -> failwith $"Unknown version: {unknownVersion}" 
             

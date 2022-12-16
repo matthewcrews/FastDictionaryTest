@@ -53,7 +53,7 @@ module Domain =
         {
             mutable Count : int
             mutable Slots : Slot<'Key, 'Value>[]
-            mutable SlotMask : int
+            mutable SlotBitShift : int
         }
         
     module Internals =
@@ -63,7 +63,7 @@ module Domain =
             {
                 Count = 0
                 Slots = Array.create initialCapacity Slot.empty<'Key, 'Value>
-                SlotMask = initialCapacity - 1
+                SlotBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount initialCapacity)
             }
 
     [<RequireQualifiedAccess>]
@@ -93,7 +93,7 @@ module Domain =
                     loop hashCode 0
                     
             let hashCode = computeHashCode key
-            let slotIdx = computeSlotIndex internals.SlotMask hashCode
+            let slotIdx = computeSlotIndex internals.SlotBitShift hashCode
             internals.Count <- internals.Count + loop hashCode slotIdx
         
         
@@ -115,7 +115,7 @@ module Domain =
                 else
                     loop 0
                     
-            let slotIdx = computeSlotIndex internals.SlotMask hashCode
+            let slotIdx = computeSlotIndex internals.SlotBitShift hashCode
             loop slotIdx
             
             
@@ -162,7 +162,7 @@ module Domain =
                 else
                     loop slotIdx
                     
-            let slotIdx = computeSlotIndex internals.SlotMask hashCode
+            let slotIdx = computeSlotIndex internals.SlotBitShift hashCode
             avxStep slotIdx
             
             
@@ -174,7 +174,7 @@ module Domain =
                 
                 // Increase the size of the backing store
                 internals.Slots <- Array.create (oldSlots.Length <<< 1) Slot.empty
-                internals.SlotMask <- internals.Slots.Length - 1
+                internals.SlotBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount internals.Slots.Length)
                 internals.Count <- 0
                 
                 for slot in oldSlots do
