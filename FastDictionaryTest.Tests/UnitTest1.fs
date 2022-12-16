@@ -8,8 +8,8 @@ let Setup () =
     ()
 
 let rng = System.Random 123
-let minKey = -1_000_000_000
-let maxKey = 1_000_000_000
+let minKey = 0
+let maxKey = 1_000
 let maxValue = 1_000_000
 
 type Value =
@@ -18,8 +18,9 @@ type Value =
     }
 
 let data =
-    [for _ in 1..10 ->
+    [for _ in 1..1_000 ->
         { Value = rng.Next (minKey, maxKey) }, rng.Next maxValue]
+    |> List.distinctBy fst
     
 let expectedValues =
     data
@@ -183,9 +184,9 @@ let ``RobinHoodEviction Dictionary matches`` () =
         Assert.AreEqual (expectedValue, actualValue)
         
 [<Test>]
-let ``EmbeddedLinkedList Dictionary matches`` () =
+let ``ByteList Dictionary matches`` () =
     
-    let testDictionary = EmbeddedLinkedList.Dictionary data
+    let testDictionary = ByteList.Dictionary data
     
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]

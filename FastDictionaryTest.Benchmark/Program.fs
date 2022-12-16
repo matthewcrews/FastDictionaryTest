@@ -218,6 +218,14 @@ type Benchmarks () =
             |]
         |]
     
+    let byteListDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                dataSets[int countKey][testKey]
+                |> ByteList.Dictionary
+            |]
+        |]
+    
     [<Params(
           KeyCount.``3``
           , KeyCount.``1_000``
@@ -536,6 +544,23 @@ type Benchmarks () =
     [<Benchmark(Description = "RH+Eviction")>]
     member b.RobinHoodEviction () =
         let testDataSets = robinHoodEvictionDictionaries
+        
+        let mutable acc = 0
+        let dataSets = testDataSets[int b.KeyCount]
+        let keySet = keySets[int b.KeyCount]
+        
+        for testKey in 0 .. testCount - 1 do
+            let data = dataSets[testKey]
+            let keys = keySet[testKey]
+        
+            for k in keys do
+                acc <- acc + data[k]
+    
+        acc
+        
+    [<Benchmark(Description = "Byte List")>]
+    member b.ByteList () =
+        let testDataSets = byteListDictionaries
         
         let mutable acc = 0
         let dataSets = testDataSets[int b.KeyCount]

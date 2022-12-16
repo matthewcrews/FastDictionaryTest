@@ -21,7 +21,7 @@
         <Compile Include="RobinHoodSimd.fs"/>
         <Compile Include="RobinHoodSimdSwitch.fs"/>
         <Compile Include="RobinHoodEviction.fs"/>
-        <Compile Include="EmbeddedLinkedList.fs"/>
+        <Compile Include="ByteList.fs"/>
     </ItemGroup>
 
 </Project>

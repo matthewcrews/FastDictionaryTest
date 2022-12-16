@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.EmbeddedLinkedList
+﻿namespace FastDictionaryTest.ByteList
 
 open System.Collections.Generic
 
@@ -92,7 +92,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             else
                 // Compute the next index which takes the wrap around logic into account
                 let nextSlotIdx = (slotIdx + (int slots[slotIdx].NextOffset)) &&& wrapAroundMask
-                listSearch (slotIdx + nextSlotIdx)
+                listSearch nextSlotIdx
 
                         
         let slotIdx = computeSlotIndex hashCode
