@@ -172,3 +172,21 @@ let ``RobinHoodSimdSwitch Dictionary matches`` () =
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
+        
+[<Test>]
+let ``RobinHoodEviction Dictionary matches`` () =
+    
+    let testDictionary = RobinHoodEviction.Dictionary data
+    
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = testDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)
+        
+[<Test>]
+let ``EmbeddedLinkedList Dictionary matches`` () =
+    
+    let testDictionary = EmbeddedLinkedList.Dictionary data
+    
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = testDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)

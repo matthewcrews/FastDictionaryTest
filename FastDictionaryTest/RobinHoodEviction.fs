@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.RobinHood
+﻿namespace FastDictionaryTest.RobinHoodEviction
 
 open System.Collections.Generic
 
@@ -70,10 +70,15 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     if EqualityComparer.Default.Equals (hashCode, slot.HashCode) &&
                        EqualityComparer.Default.Equals (key, slot.Key) then
                         slot.Value <- value
+                    
+                    // We will evict the current entry under two conditions
+                    // 1. This is the home for the new Entry and the current Entry
+                    // is already away from its home
+                    // 2. The new Entry is farther from its home than the current Entry
+                    elif
+                        offset = 0 && slot.Offset > 0 ||
+                        ((slot.Offset <> 0) && slot.Offset < offset) then
                         
-                    // If this new value is farther from it's Home than the current entry
-                    // take the entry for the new value and re-insert the prev entry
-                    elif slot.Offset < offset then
                         let prevKey = slot.Key
                         let prevValue = slot.Value
                         slot.Offset <- offset

@@ -5,6 +5,7 @@
 
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
+        <Platform>x64</Platform>
     </PropertyGroup>
 
     <ItemGroup>

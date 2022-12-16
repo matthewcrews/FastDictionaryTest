@@ -9,30 +9,19 @@ open FastDictionaryTest
 
 
 type KeyCount =
-    | ``5``  = 0
-    | ``10``  = 1
-    | ``20``  = 2
-    | ``40``  = 3
-    | ``80``  = 4
-    | ``160``  = 5
-    | ``320``  = 6
+    | ``3``        = 0
+    | ``1_000``  = 1
+    | ``MinFill%`` = 2
+    | ``MaxFill%`` = 3
 
 let valueCounts = [|
-    KeyCount.``5``    , 5
-    KeyCount.``10``   , 10
-    KeyCount.``20``   , 20
-    KeyCount.``40``   , 40
-    KeyCount.``80``   , 80
-    KeyCount.``160``  , 160
-    KeyCount.``320``  , 320
+    KeyCount.``3``        , 3
+    KeyCount.``1_000``  , 1_000
+    KeyCount.``MaxFill%`` , 384
+    KeyCount.``MinFill%`` , 385
 |]
 
 type [<Measure>] Key
-[<Struct>] 
-type StructKey =
-    {
-        Key : int
-    }
 
 [<MemoryDiagnoser>]
 [<HardwareCounters(HardwareCounter.CacheMisses,
@@ -42,18 +31,24 @@ type Benchmarks () =
     
     let rng = Random 123
     let minKey = 0
-    let maxKey = 1_000
-    let maxValue = 1_000_000
+    let maxKey = 10_000
+    let maxValue = 1_000
     let lookupCount = 100
     let testCount = 100
     
     let dataSets =
         [| for _, count in valueCounts ->
-            [| for _ in 0 .. testCount - 1 ->   
-                [| for _ in 1 .. count ->
-                     // rng.Next (minKey, maxKey) * 1<Key>, rng.Next maxValue |]
-                     { Key = (rng.Next (minKey, maxKey)) <<< 16 } , rng.Next maxValue |]
-                |> Array.distinctBy fst
+            [| for _ in 0 .. testCount - 1 ->
+                 let d = Dictionary()
+                 
+                 while d.Count < count do
+                     let k = 1<Key> * ((rng.Next (minKey, maxKey)) <<< 16)
+                     let v = rng.Next maxValue
+                     d[k] <- v
+
+                 d
+                 |> Seq.map (|KeyValue|)
+                 |> Array.ofSeq
             |]
         |]
     
@@ -214,18 +209,22 @@ type Benchmarks () =
                 |> RobinHoodSimdSwitch.Dictionary
             |]
         |]
+        
+    let robinHoodEvictionDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                dataSets[int countKey][testKey]
+                |> RobinHoodEviction.Dictionary
+            |]
+        |]
     
     [<Params(
-          KeyCount.``5``
-          // , KeyCount.``10``
-          // , KeyCount.``20``
-          // , KeyCount.``40``
-          // , KeyCount.``80``
-          // , KeyCount.``160``
-          , KeyCount.``320``
-        
+          KeyCount.``3``
+          , KeyCount.``1_000``
+          , KeyCount.``MinFill%``
+          , KeyCount.``MaxFill%``
         )>]
-    member val KeyCount = KeyCount.``5`` with get, set
+    member val KeyCount = KeyCount.``3`` with get, set
         
         
     // [<Benchmark>]
@@ -520,6 +519,23 @@ type Benchmarks () =
     // [<Benchmark(Description = "RH/Cache#/SIMD/Size Switch")>]
     member b.RobinHoodSimdSwitch () =
         let testDataSets = robinHoodSimdSwitchDictionaries
+        
+        let mutable acc = 0
+        let dataSets = testDataSets[int b.KeyCount]
+        let keySet = keySets[int b.KeyCount]
+        
+        for testKey in 0 .. testCount - 1 do
+            let data = dataSets[testKey]
+            let keys = keySet[testKey]
+        
+            for k in keys do
+                acc <- acc + data[k]
+    
+        acc
+        
+    [<Benchmark(Description = "RH+Eviction")>]
+    member b.RobinHoodEviction () =
+        let testDataSets = robinHoodEvictionDictionaries
         
         let mutable acc = 0
         let dataSets = testDataSets[int b.KeyCount]
