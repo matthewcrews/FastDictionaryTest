@@ -200,9 +200,6 @@ type Dictionary<'Key, 'Value
         with inline get (key: 'Key) =
             d.ItemGet key d.Internals
 
-        and inline set (key: 'Key) (value: 'Value) =
-            Logic.itemSet key value d.Internals
-
 
 module Dictionary =
 

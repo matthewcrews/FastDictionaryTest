@@ -153,8 +153,3 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             | Empty ->
                 raise (KeyNotFoundException())
-
-
-        and set (key: 'Key) (value: 'Value) =
-                addEntry key value
-                resize()

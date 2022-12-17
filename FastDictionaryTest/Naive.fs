@@ -1,4 +1,6 @@
-﻿namespace FastDictionaryTest.OpenChaining
+﻿[<RequireQualifiedAccess>]
+module FastDictionaryTest.Naive
+
 
 open System.Collections.Generic
 
@@ -14,19 +16,18 @@ open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
+
     // Track the number of items in Dictionary for resize
     let mutable count = 0
+
     // Create the Buckets with some initial capacity
     let mutable buckets : list<Entry<'Key, 'Value>>[] = Array.create 4 []
-    // BitShift necessary for mapping HashCode to SlotIdx using Fibonacci Hashing
-    let mutable slotBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
 
-    // This relies on the size of buckets being a power of 2
     let computeBucketIndex (k: 'Key) =
         let h = hash k
-        let hashProduct = uint h * 2654435769u
-        int (hashProduct >>> slotBitShift)
-        
+        let bucketIdx = h % buckets.Length
+        bucketIdx
+
     let getIndexForEntry (key: 'Key) (bucket: list<Entry<_,_>>) =
         let rec loop index key bucket =
             match bucket with
@@ -36,9 +37,10 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     index
                 else
                     loop (index + 1) key tail
-        
+
         loop 0 key bucket
-        
+
+
     let rec getEntryForKey (key: 'Key) (bucket: list<Entry<_,_>>) =
         match bucket with
         | [] ->
@@ -48,20 +50,21 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 head
             else
                 getEntryForKey key tail
-    
+
+
     let addEntry (key: 'Key) (value: 'Value) =
         let bucketIdx = computeBucketIndex key
         let bucket = buckets[bucketIdx]
         // See if there is already an Entry for the Key in the bucket
         let indexForEntry = getIndexForEntry key bucket
-        
+
         // If the index is non-negative, then the Key exists in the bucket
         if indexForEntry >= 0 then
             // In this case, the count of the Dictionary will not increase
             let newEntry = { Key = key; Value = value }
             let newBucket = List.updateAt indexForEntry newEntry bucket
             buckets[bucketIdx] <- newBucket
-            
+
         else
             // In this case, the count of the Dictionary will increase and we
             // may need to resize. We add the entry and resize if necessary
@@ -69,37 +72,30 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             let newBucket = newEntry :: bucket
             buckets[bucketIdx] <- newBucket
             count <- count + 1
-    
-    
+
+
     let resize () =
         // Only resize when the fill is > 75%
         if count > (buckets.Length >>> 2) * 3 then
             let oldBuckets = buckets
-            
+
             // Increase the size of the backing store
             buckets <- Array.create (buckets.Length <<< 1) []
-            slotBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
-            
+
             for bucket in oldBuckets do
                 for entry in bucket do
                     addEntry entry.Key entry.Value
-        
+
     do
         for k, v in entries do
             addEntry k v
 
     new () = Dictionary([])
-            
+
     member d.Item
         with get (key: 'Key) =
             let bucketIdx = computeBucketIndex key
             let bucket = buckets[bucketIdx]
             let entry = getEntryForKey key bucket
             entry.Value
-            
-        and set (key: 'Key) (value: 'Value) =
-                addEntry key value
-                resize()
-    
-    

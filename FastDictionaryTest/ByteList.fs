@@ -71,11 +71,11 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     let rec addEntry (key: 'Key) (value: 'Value) =
 
-        let rec insertIntoNextEmptyBucket (hashCode: int) (offset: int) (bucketIdx: int) : int =
+        let rec insertIntoNextEmptyBucket (hashCode: int) (offset: byte) (bucketIdx: int) : byte =
             if bucketIdx < buckets.Length then
                 let bucket = &buckets[bucketIdx]
                 if bucket.IsAvailable then
-                    bucket.PrevOffset <- byte offset
+                    bucket.PrevOffset <- offset
                     bucket.NextOffset <- 0uy
                     bucket.HashCode <- hashCode
                     bucket.Key <- key
@@ -83,7 +83,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     count <- count + 1
                     offset
                 else
-                    insertIntoNextEmptyBucket hashCode (offset + 1) (bucketIdx + 1)
+                    insertIntoNextEmptyBucket hashCode (offset + 1uy) (bucketIdx + 1)
 
             else
                 insertIntoNextEmptyBucket hashCode offset 0
@@ -119,7 +119,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             // to add our new Key/Value and update the offset for the previous Last entry.
             elif buckets[bucketIdx].IsLast then
 
-                buckets[bucketIdx].NextOffset <- byte (insertIntoNextEmptyBucket hashCode 1 (bucketIdx + 1))
+                buckets[bucketIdx].NextOffset <- byte (insertIntoNextEmptyBucket hashCode 1uy (bucketIdx + 1))
 
             // We are not at the end of the list so we compute the next BucketIdx and move
             // to the next Entry. We use a wrap around mask to ensure we don't go outside
@@ -208,7 +208,3 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     member d.Item
         with get (key: 'Key) = getValue key
-
-        and set (key: 'Key) (value: 'Value) =
-                addEntry key value
-                resize()

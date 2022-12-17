@@ -224,8 +224,3 @@ type Dictionary<'KeyS, 'KeyR, 'Value
     member d.Item
         with get (key: 'KeyR) =
             Logic.GetValue (key, &internalsR)
-
-        and set (key: 'KeyR) (value: 'Value) =
-                let mutable internals = internalsR
-                Logic.AddEntry (key, value, &internals)
-                Logic.Resize &internals

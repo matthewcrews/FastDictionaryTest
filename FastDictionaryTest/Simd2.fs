@@ -160,7 +160,3 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     member d.Item
         with get (key: 'Key) = getValue key
-
-        and set (key: 'Key) (value: 'Value) =
-                addEntry key value
-                resize()

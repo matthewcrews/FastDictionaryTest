@@ -1,10 +1,9 @@
-﻿namespace FastDictionaryTest.Arrays
+﻿namespace FastDictionaryTest.FibonacciHashing
 
 open System.Collections.Generic
 
 module private Helpers =
 
-    [<Struct>]
     type Entry<'Key, 'Value> =
         {
             Key: 'Key
@@ -18,39 +17,37 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Track the number of items in Dictionary for resize
     let mutable count = 0
     // Create the Buckets with some initial capacity
-    let mutable buckets : Entry<'Key, 'Value>[][] = Array.create 4 Array.empty
+    let mutable buckets : list<Entry<'Key, 'Value>>[] = Array.create 4 []
     // BitShift necessary for mapping HashCode to SlotIdx using Fibonacci Hashing
     let mutable slotBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
 
     // This relies on the size of buckets being a power of 2
-    let computeBucketIndex (key: 'Key) =
-        let h = EqualityComparer<'Key>.Default.GetHashCode key
+    let computeBucketIndex (k: 'Key) =
+        let h = hash k
         let hashProduct = uint h * 2654435769u
         int (hashProduct >>> slotBitShift)
 
-    let getIndexForEntry (key: 'Key) (bucket: Entry<_,_>[]) =
-        let mutable result = -1
+    let getIndexForEntry (key: 'Key) (bucket: list<Entry<_,_>>) =
+        let rec loop index key bucket =
+            match bucket with
+            | [] -> -1
+            | head::tail ->
+                if head.Key = key then
+                    index
+                else
+                    loop (index + 1) key tail
 
-        bucket
-        |> Array.iteri (fun i entry ->
-            if EqualityComparer<'Key>.Default.Equals (entry.Key, key) then
-                result <- i)
+        loop 0 key bucket
 
-        result
-
-    let getValueForKey (key: 'Key) (bucket: Entry<_,_>[]) =
-
-        // Talk about this versus Array.find
-        let rec loop i =
-            if i >= bucket.Length then
-                raise (KeyNotFoundException())
-            elif EqualityComparer<'Key>.Default.Equals (bucket[i].Key, key) then
-                bucket[i].Value
+    let rec getEntryForKey (key: 'Key) (bucket: list<Entry<_,_>>) =
+        match bucket with
+        | [] ->
+            raise (KeyNotFoundException())
+        | head::tail ->
+            if head.Key = key then
+                head
             else
-                loop (i + 1)
-
-        loop 0
-
+                getEntryForKey key tail
 
     let addEntry (key: 'Key) (value: 'Value) =
         let bucketIdx = computeBucketIndex key
@@ -62,13 +59,14 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         if indexForEntry >= 0 then
             // In this case, the count of the Dictionary will not increase
             let newEntry = { Key = key; Value = value }
-            buckets[bucketIdx][indexForEntry] <- newEntry
+            let newBucket = List.updateAt indexForEntry newEntry bucket
+            buckets[bucketIdx] <- newBucket
 
         else
             // In this case, the count of the Dictionary will increase and we
             // may need to resize. We add the entry and resize if necessary
             let newEntry = { Key = key; Value = value }
-            let newBucket = Array.append [|newEntry|] bucket
+            let newBucket = newEntry :: bucket
             buckets[bucketIdx] <- newBucket
             count <- count + 1
 
@@ -79,7 +77,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             let oldBuckets = buckets
 
             // Increase the size of the backing store
-            buckets <- Array.create (buckets.Length <<< 1) Array.empty
+            buckets <- Array.create (buckets.Length <<< 1) []
             slotBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
 
@@ -96,4 +94,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     member d.Item
         with get (key: 'Key) =
             let bucketIdx = computeBucketIndex key
-            getValueForKey key buckets[bucketIdx]
+            let bucket = buckets[bucketIdx]
+            let entry = getEntryForKey key bucket
+            entry.Value
