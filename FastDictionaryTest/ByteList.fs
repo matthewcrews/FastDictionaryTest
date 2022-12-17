@@ -30,6 +30,7 @@ module private Helpers =
         member s.IsAvailable = s.HashCode < 0
         member s.IsHead = s.PrevOffset = Offset.head
         member s.IsLast = s.NextOffset = Offset.last
+        member s.IsTail = s.PrevOffset > 0uy
         
     module Slot =
         
@@ -63,11 +64,11 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let computeSlotIndex (hashCode: int) =
         let hashProduct = (uint hashCode) * 2654435769u
         int (hashProduct >>> slotBitShift)
+
             
     let rec addEntry (key: 'Key) (value: 'Value) =
-        let hashCode = computeHashCode key
         
-        let rec emptySlotSearch (offset: int) (slotIdx: int) : int =
+        let rec insertIntoNextEmptySlot (hashCode: int) (offset: int) (slotIdx: int) : int =
             if slotIdx < slots.Length then
                 let slot = &slots[slotIdx]
                 if slot.IsAvailable then
@@ -79,22 +80,54 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     count <- count + 1
                     offset
                 else
-                    emptySlotSearch (offset + 1) (slotIdx + 1)
+                    insertIntoNextEmptySlot hashCode (offset + 1) (slotIdx + 1)
                 
             else
-                emptySlotSearch offset 0
+                insertIntoNextEmptySlot hashCode offset 0
         
+        let evict (slotIdx: int) =
+            let slot = &slots[slotIdx]
+            let parentSlotIdx = (slotIdx - (int slot.PrevOffset)) &&& wrapAroundMask
+            
+            // If this is the Last element in a List, we just need to update the Parent's
+            // NextOffset value to 0 and then re-add this entry
+            if slot.IsLast then
+                slots[parentSlotIdx].NextOffset <- 0uy
+                addEntry slot.Key slot.Value
+            
+            // This element is in the middle of the list so we will remove it from the existing
+            // list and then re-add it
+            else
+                let childSlotIdx = (slotIdx + (int slot.NextOffset)) &&& wrapAroundMask
+                slots[parentSlotIdx].NextOffset <- slots[parentSlotIdx].NextOffset + slot.NextOffset
+                slots[childSlotIdx].PrevOffset <- slots[childSlotIdx].PrevOffset + slot.PrevOffset
+                addEntry slot.Key slot.Value
         
-        let rec listSearch (slotIdx: int) =
-            if slots[slotIdx].IsLast then
-                slots[slotIdx].NextOffset <- byte (emptySlotSearch 1 (slotIdx + 1))
+        let rec listSearch (hashCode: int) (slotIdx: int) =
+            let slot = &slots[slotIdx]
+            
+            // Check if we have found an existing Entry for the Key
+            // If we have, we want to update the value
+            if slot.HashCode = hashCode && slot.Key = key then
+                slot.Value <- value
                 
+            // The Entry is not a match for Key so we need to check if we have come
+            // to the end of the list. If we have, then we search for empty space
+            // to add our new Key/Value and update the offset for the previous Last entry.
+            elif slots[slotIdx].IsLast then
+                
+                slots[slotIdx].NextOffset <- byte (insertIntoNextEmptySlot hashCode 1 (slotIdx + 1))
+                
+            // We are not at the end of the list so we compute the next SlotIdx and move
+            // to the next Entry. We use a wrap around mask to ensure we don't go outside
+            // the bounds of the array.
             else
                 // Compute the next index which takes the wrap around logic into account
                 let nextSlotIdx = (slotIdx + (int slots[slotIdx].NextOffset)) &&& wrapAroundMask
-                listSearch nextSlotIdx
+                listSearch hashCode nextSlotIdx
 
                         
+        let hashCode = computeHashCode key
         let slotIdx = computeSlotIndex hashCode
         let slot = &slots[slotIdx]
         // Check if slot is Empty or a Tombstone
@@ -105,8 +138,27 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             slot.Key <- key
             slot.Value <- value
             count <- count + 1
+            
+        // If there is already an entry for this Key, overwrite the Value
+        elif slot.HashCode = hashCode && slot.Key = key then
+            slot.Value <- value
+            
+        // Check if the current Entry is part of a chain for a different
+        // SlotIdx and should therefore be evicted
+        elif slot.IsTail then
+            // Move the current entry out of this position
+            evict slotIdx
+            slot.PrevOffset <- Offset.head
+            slot.NextOffset <- Offset.last
+            slot.HashCode <- hashCode
+            slot.Key <- key
+            slot.Value <- value
+            count <- count + 1
+            
+        // In this case, the current Entry is the head of a list that
+        // we need to append to. We start searching for the tail of the list
         else
-            listSearch slotIdx
+            listSearch hashCode slotIdx
 
     
     let getValue (key: 'Key) =
