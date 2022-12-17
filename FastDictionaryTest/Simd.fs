@@ -9,14 +9,14 @@ open System.Runtime.Intrinsics.X86
 module private Helpers =
 
     let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
-    
+
     [<RequireQualifiedAccess>]
     module HashCode =
         let empty = -2
         let tombstone = -1
-    
+
     [<Struct>]
-    type Slot<'Key, 'Value> =
+    type Bucket<'Key, 'Value> =
         {
             mutable HashCode : int
             mutable Key : 'Key
@@ -26,9 +26,9 @@ module private Helpers =
         member s.IsEmpty = s.HashCode = HashCode.empty
         member s.IsEntry = s.HashCode >= 0
         member s.IsAvailable = s.HashCode < 0
-        
-    module Slot =
-        
+
+    module Bucket =
+
         let empty<'Key, 'Value> =
             {
                 HashCode = -1
@@ -43,135 +43,135 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Track the number of items in Dictionary for resize
     let mutable count = 0
     // Create the Buckets with some initial capacity
-    let mutable slots : Slot<'Key, 'Value>[] = Array.create 4 Slot.empty
-    // BitShift necessary for mapping HashCode to SlotIdx using Fibonacci Hashing
-    let mutable slotBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount slots.Length)
-    
-    // This relies on the number of slots being a power of 2
+    let mutable buckets : Bucket<'Key, 'Value>[] = Array.create 4 Bucket.empty
+    // BitShift necessary for mapping HashCode to BucketIdx using Fibonacci Hashing
+    let mutable bucketBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
+
+    // This relies on the number of buckets being a power of 2
     let computeHashCode (key: 'Key) =
         // Ensure the HashCode is positive
         (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
-        
-    let computeSlotIndex (hashCode: int) =
-        let hashProduct = uint hashCode * 2654435769u
-        int (hashProduct >>> slotBitShift)
 
-            
+    let computeBucketIndex (hashCode: int) =
+        let hashProduct = uint hashCode * 2654435769u
+        int (hashProduct >>> bucketBitShift)
+
+
     let addEntry (key: 'Key) (value: 'Value) =
-        
-        let rec loop (hashCode: int) (slotIdx: int) =
-            if slotIdx < slots.Length then
-                let slot = &slots[slotIdx]
-                // Check if slot is Empty or a Tombstone
-                if slot.IsAvailable then
-                    slot.HashCode <- hashCode
-                    slot.Key <- key
-                    slot.Value <- value
+
+        let rec loop (hashCode: int) (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                let bucket = &buckets[bucketIdx]
+                // Check if bucket is Empty or a Tombstone
+                if bucket.IsAvailable then
+                    bucket.HashCode <- hashCode
+                    bucket.Key <- key
+                    bucket.Value <- value
                     count <- count + 1
                 else
-                    // If we reach here, we know the slot is occupied
-                    if EqualityComparer.Default.Equals (hashCode, slot.HashCode) &&
-                       EqualityComparer.Default.Equals (key, slot.Key) then
-                        slot.Value <- value
+                    // If we reach here, we know the bucket is occupied
+                    if EqualityComparer.Default.Equals (hashCode, bucket.HashCode) &&
+                       EqualityComparer.Default.Equals (key, bucket.Key) then
+                        bucket.Value <- value
                     else
-                        loop hashCode (slotIdx + 1)
+                        loop hashCode (bucketIdx + 1)
             else
-                // Start over looking from the beginning of the slots
+                // Start over looking from the beginning of the buckets
                 loop hashCode 0
-                
-        let hashCode = computeHashCode key
-        let slotIdx = computeSlotIndex hashCode
-        loop hashCode slotIdx
 
-    
+        let hashCode = computeHashCode key
+        let bucketIdx = computeBucketIndex hashCode
+        loop hashCode bucketIdx
+
+
     let getValue (key: 'Key) =
-        
-        let rec loop (hashCode: int) (slotIdx: int) =
-            if slotIdx < slots.Length then
-                if slots[slotIdx].IsEntry then
-                    if EqualityComparer.Default.Equals (hashCode, slots[slotIdx].HashCode) &&
-                       EqualityComparer.Default.Equals (key, slots[slotIdx].Key) then
-                        slots[slotIdx].Value
-                        
+
+        let rec loop (hashCode: int) (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                if buckets[bucketIdx].IsEntry then
+                    if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
+                       EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
+                        buckets[bucketIdx].Value
+
                     else
-                        loop hashCode (slotIdx + 1)
-                        
-                elif slots[slotIdx].IsTombstone then
-                    loop hashCode (slotIdx + 1)
-                    
+                        loop hashCode (bucketIdx + 1)
+
+                elif buckets[bucketIdx].IsTombstone then
+                    loop hashCode (bucketIdx + 1)
+
                 else
                     raise (KeyNotFoundException())
             else
                 loop hashCode 0
-                
-        let rec avxLoop (hashCode: int) (slotIdx: int) =
-            if slotIdx < slots.Length - 4 then
+
+        let rec avxLoop (hashCode: int) (bucketIdx: int) =
+            if bucketIdx < buckets.Length - 4 then
                 let hashCodeVec = Vector128.Create hashCode
-                let slotsHashCodeVec = Vector128.Create (
-                    slots[slotIdx].HashCode,
-                    slots[slotIdx + 1].HashCode,
-                    slots[slotIdx + 2].HashCode,
-                    slots[slotIdx + 3].HashCode
+                let bucketsHashCodeVec = Vector128.Create (
+                    buckets[bucketIdx].HashCode,
+                    buckets[bucketIdx + 1].HashCode,
+                    buckets[bucketIdx + 2].HashCode,
+                    buckets[bucketIdx + 3].HashCode
                     )
-                
+
                 let compareResult =
-                    Sse2.CompareEqual (hashCodeVec, slotsHashCodeVec)
+                    Sse2.CompareEqual (hashCodeVec, bucketsHashCodeVec)
                     |> retype<_, Vector128<float32>>
                 let moveMask = Sse2.MoveMask compareResult
                 let offset = System.Numerics.BitOperations.TrailingZeroCount moveMask
-                
+
                 if offset <= 3 &&
-                   EqualityComparer.Default.Equals (key, slots[slotIdx + offset].Key) then
-                    slots[slotIdx + offset].Value
+                   EqualityComparer.Default.Equals (key, buckets[bucketIdx + offset].Key) then
+                    buckets[bucketIdx + offset].Value
                 else
-                    // loop hashCode slotIdx
-                    // Check if any of the slots are empty
+                    // loop hashCode bucketIdx
+                    // Check if any of the buckets are empty
                     let emptyVec = Vector128.Create HashCode.empty
                     let emptyCheckVec =
-                        Sse2.CompareEqual (slotsHashCodeVec, emptyVec)
+                        Sse2.CompareEqual (bucketsHashCodeVec, emptyVec)
                         |> retype<_, Vector128<float32>>
-                        
+
                     let moveMask =
                         Sse2.MoveMask emptyCheckVec
-                        
+
                     if moveMask = 0 then
-                        avxLoop hashCode (slotIdx + 3)
+                        avxLoop hashCode (bucketIdx + 3)
                     else
                         raise (KeyNotFoundException())
             else
-                loop hashCode slotIdx
-            
-        
+                loop hashCode bucketIdx
+
+
         let hashCode = computeHashCode key
-        let slotIdx = computeSlotIndex hashCode
-        avxLoop hashCode slotIdx
-        
-                    
+        let bucketIdx = computeBucketIndex hashCode
+        avxLoop hashCode bucketIdx
+
+
     let resize () =
         // Resize if our fill is >75%
-        if count > (slots.Length >>> 2) * 3 then
-        // if count > slots.Length - 2 then
-            let oldSlots = slots
-            
+        if count > (buckets.Length >>> 2) * 3 then
+        // if count > buckets.Length - 2 then
+            let oldBuckets = buckets
+
             // Increase the size of the backing store
-            slots <- Array.create (slots.Length <<< 1) Slot.empty
-            slotBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount slots.Length)
+            buckets <- Array.create (buckets.Length <<< 1) Bucket.empty
+            bucketBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
-            
-            for slot in oldSlots do
-                if slot.IsEntry then
-                    addEntry slot.Key slot.Value
-        
+
+            for bucket in oldBuckets do
+                if bucket.IsEntry then
+                    addEntry bucket.Key bucket.Value
+
     do
         for k, v in entries do
             addEntry k v
             resize()
 
     new () = Dictionary<'Key, 'Value>([])
-            
+
     member d.Item
         with get (key: 'Key ) = getValue key
-            
+
         and set (key: 'Key) (value: 'Value) =
                 addEntry key value
                 resize()
