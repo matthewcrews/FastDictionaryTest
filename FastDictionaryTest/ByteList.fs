@@ -56,16 +56,19 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Used for Wrap Around addition of offsets
     let mutable wrapAroundMask = slots.Length - 1
     
-    // This relies on the number of slots being a power of 2
+    // This relies on the number of slots being a power of 2. We also make sure the HashCode is positive
+    // since we use the top bit to indicate whether the slot is available. It could either be empty
+    // or a tombstone.
     let computeHashCode (key: 'Key) =
         // Ensure the HashCode is positive
         (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
-        
+
+
     let computeSlotIndex (hashCode: int) =
         let hashProduct = (uint hashCode) * 2654435769u
         int (hashProduct >>> slotBitShift)
 
-            
+
     let rec addEntry (key: 'Key) (value: 'Value) =
         
         let rec insertIntoNextEmptySlot (hashCode: int) (offset: int) (slotIdx: int) : int =
@@ -126,7 +129,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 let nextSlotIdx = (slotIdx + (int slots[slotIdx].NextOffset)) &&& wrapAroundMask
                 listSearch hashCode nextSlotIdx
 
-                        
+
         let hashCode = computeHashCode key
         let slotIdx = computeSlotIndex hashCode
         let slot = &slots[slotIdx]
@@ -178,6 +181,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         loop slotIdx
         
 
+    // Increase the size of the backing array if the max fill percent has been reached
+    // and migrate all of the entries.
     let resize () =
         // Resize if our fill is >75%
         if count > (slots.Length >>> 2) * 3 then

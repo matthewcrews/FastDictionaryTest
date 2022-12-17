@@ -13,12 +13,30 @@ type KeyCount =
     | ``1_000``  = 1
     | ``MinFill%`` = 2
     | ``MaxFill%`` = 3
+    | ``10`` = 4
+    | ``20`` = 5
+    | ``30`` = 6
+    | ``40`` = 7
+    | ``50`` = 8
+    | ``60`` = 9
+    | ``70`` = 10
+    | ``80`` = 11
+    | ``90`` = 12
 
 let valueCounts = [|
     KeyCount.``3``        , 3
     KeyCount.``1_000``  , 1_000
     KeyCount.``MaxFill%`` , 384
     KeyCount.``MinFill%`` , 385
+    KeyCount.``10``, 10
+    KeyCount.``20``, 20
+    KeyCount.``30``, 30
+    KeyCount.``40``, 40
+    KeyCount.``50``, 50
+    KeyCount.``60``, 60
+    KeyCount.``70``, 70
+    KeyCount.``80``, 80
+    KeyCount.``90``, 90
 |]
 
 type [<Measure>] Key
@@ -231,6 +249,15 @@ type Benchmarks () =
           , KeyCount.``1_000``
           , KeyCount.``MinFill%``
           , KeyCount.``MaxFill%``
+          , KeyCount.``10``
+          , KeyCount.``20``
+          , KeyCount.``30``
+          , KeyCount.``40``
+          , KeyCount.``50``
+          , KeyCount.``60``
+          , KeyCount.``70``
+          , KeyCount.``80``
+          , KeyCount.``90``
         )>]
     member val KeyCount = KeyCount.``3`` with get, set
         
@@ -490,7 +517,7 @@ type Benchmarks () =
     
         acc
         
-    [<Benchmark(Description = "Robin Hood (RH)/Cache#")>]
+    // [<Benchmark(Description = "Robin Hood (RH)/Cache#")>]
     member b.RobinHood () =
         let testDataSets = robinHoodDictionaries
         
