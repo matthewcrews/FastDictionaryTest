@@ -11,7 +11,7 @@ open FastDictionaryTest.Benchmark.Domain
 [<HardwareCounters(HardwareCounter.CacheMisses,
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
-type Naive () =
+type RobinHood () =
 
     let dictionaries =
         [| for countKey, _ in valueCounts ->
@@ -26,7 +26,7 @@ type Naive () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 dataSets[int countKey][testKey]
-                |> Naive.Dictionary
+                |> RobinHood.Dictionary
             |]
         |]
 
@@ -53,7 +53,7 @@ type Naive () =
 
         acc
 
-    [<Benchmark(Description = "Fibonacci Hashing")>]
+    [<Benchmark(Description = "Robin Hood (RH)")>]
     member b.Naive () =
         let testDataSets = testDictionaries
 

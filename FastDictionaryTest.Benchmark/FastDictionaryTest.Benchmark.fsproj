@@ -10,7 +10,16 @@
         <Compile Include="Domain.fs"/>
         <Compile Include="Baseline.fs"/>
         <Compile Include="Naive.fs"/>
-        <Compile Include="Benchmarks.fs"/>
+        <Compile Include="FibonacciHashing.fs"/>
+        <Compile Include="ZeroAlloc.fs"/>
+        <Compile Include="ArrayBuckets.fs"/>
+        <Compile Include="EmbeddedHead.fs"/>
+        <Compile Include="LinearProbing.fs"/>
+        <Compile Include="CacheHashCode.fs"/>
+        <Compile Include="RobinHood.fs"/>
+        <Compile Include="RobinHoodEviction.fs"/>
+        <Compile Include="ByteList.fs"/>
+        <!--        <Compile Include="Benchmarks.fs" />-->
         <Compile Include="Program.fs"/>
     </ItemGroup>
 

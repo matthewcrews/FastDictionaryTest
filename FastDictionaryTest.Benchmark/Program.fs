@@ -79,6 +79,42 @@ let main argv =
             let _ = BenchmarkRunner.Run<Naive>()
             ()
 
+        | "fibonaccihashing" ->
+            let _ = BenchmarkRunner.Run<FibonacciHashing>()
+            ()
+
+        | "zeroalloc" ->
+            let _ = BenchmarkRunner.Run<ZeroAlloc>()
+            ()
+
+        | "arraybuckets" ->
+            let _ = BenchmarkRunner.Run<ArrayBuckets>()
+            ()
+
+        | "embeddedhead" ->
+            let _ = BenchmarkRunner.Run<EmbeddedHead>()
+            ()
+
+        | "linearprobing" ->
+            let _ = BenchmarkRunner.Run<LinearProbing>()
+            ()
+
+        | "cachehashcode" ->
+            let _ = BenchmarkRunner.Run<CacheHashCode>()
+            ()
+
+        | "robinhood" ->
+            let _ = BenchmarkRunner.Run<RobinHood>()
+            ()
+
+        | "robinhoodeviction" ->
+            let _ = BenchmarkRunner.Run<RobinHoodEviction>()
+            ()
+
+        | "bytelist" ->
+            let _ = BenchmarkRunner.Run<ByteList>()
+            ()
+
         | unknownSuite ->
             failwith $"Unknown suite of benchmarks: {unknownSuite}"
         ()

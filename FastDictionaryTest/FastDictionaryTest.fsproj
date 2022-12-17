@@ -10,7 +10,7 @@
         <Compile Include="Naive.fs"/>
         <Compile Include="FibonacciHashing.fs"/>
         <Compile Include="ZeroAlloc.fs"/>
-        <Compile Include="Arrays.fs"/>
+        <Compile Include="ArrayBuckets.fs"/>
         <Compile Include="EmbeddedHead.fs"/>
         <Compile Include="LinearProbing.fs"/>
         <Compile Include="CacheHashCode.fs"/>

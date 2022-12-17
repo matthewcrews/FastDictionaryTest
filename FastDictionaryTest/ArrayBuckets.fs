@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.Arrays
+﻿namespace FastDictionaryTest.ArrayBuckets
 
 open System.Collections.Generic
 
