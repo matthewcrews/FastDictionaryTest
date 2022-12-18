@@ -54,7 +54,7 @@ type LinearProbing () =
         acc
 
     [<Benchmark(Description = "Linear Probing (LP)")>]
-    member b.Naive () =
+    member b.Test () =
         let testDataSets = testDictionaries
 
         let mutable acc = 0

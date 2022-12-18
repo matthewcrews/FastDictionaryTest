@@ -54,7 +54,7 @@ type ArrayBuckets () =
         acc
 
     [<Benchmark(Description = "Array Buckets")>]
-    member b.Naive () =
+    member b.Test () =
         let testDataSets = testDictionaries
 
         let mutable acc = 0

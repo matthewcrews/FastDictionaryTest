@@ -19,42 +19,64 @@ type Args =
             | Suite _ -> "White suite of benchmarks to run"
 
 
-
 let profile (version: string) loopCount =
 
     printfn $"Profiling: {version}, LoopCount: {loopCount}"
-    // let b = Benchmarks ()
     let mutable result = 0
 
     match version.ToLower() with
-    // | "dictionary" ->
-    //     for i in 1 .. loopCount do
-    //         result <- b.Dictionary()
-    // | "naive" ->
-    //     for i in 1 .. loopCount do
-    //         result <- b.OpenChaining()
-    //
-    // | "zeroalloc" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.ZeroAllocList()
-    //
-    // | "embeddedhead" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.EmbeddedHead()
-    //
-    // | "linearprobing" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.LinearProbing()
-    //
-    // | "cachehashcode" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.CacheHashCode()
-    //
-    // | "robinhood" ->
-    //     for _ in 1 .. loopCount do
-    //         result <- b.RobinHood()
+    | "naive" ->
+        let b = Naive()
+        for i in 1 .. loopCount do
+            result <- b.Test()
 
-    | unknownVersion -> failwith $"Unknown version: {unknownVersion}"
+    | "fibonaccihashing" ->
+        let b = FibonacciHashing()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "zeroalloc" ->
+        let b = ZeroAlloc()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "arraybuckets" ->
+        let b = ArrayBuckets()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "embeddedhead" ->
+        let b = EmbeddedHead()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "linearprobing" ->
+        let b = LinearProbing()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "cachehashcode" ->
+        let b = CacheHashCode()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "robinhood" ->
+        let b = RobinHood()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "robinhoodeviction" ->
+        let b = RobinHoodEviction()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "bytelist" ->
+        let b = ByteList()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | unknownVersion ->
+        failwith $"Unknown version: {unknownVersion}"
 
     result
 

@@ -54,7 +54,7 @@ type RobinHoodEviction () =
         acc
 
     [<Benchmark(Description = "RH + Eviction")>]
-    member b.Naive () =
+    member b.Test () =
         let testDataSets = testDictionaries
 
         let mutable acc = 0

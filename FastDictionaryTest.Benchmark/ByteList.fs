@@ -31,8 +31,14 @@ type ByteList () =
         |]
 
 
-    [<Params(KeyCount.``10``, KeyCount.``100``, KeyCount.``1_000``, KeyCount.``10_000``
-             , KeyCount.``MinFill%``, KeyCount.``MaxFill%``)>]
+    [<Params(
+             KeyCount.``10``
+             , KeyCount.``100``
+             , KeyCount.``1_000``
+             , KeyCount.``10_000``
+             // , KeyCount.``MinFill%``
+             // , KeyCount.``MaxFill%``
+             )>]
     member val KeyCount = KeyCount.``10`` with get, set
 
 
@@ -54,7 +60,7 @@ type ByteList () =
         acc
 
     [<Benchmark(Description = "Byte List")>]
-    member b.Naive () =
+    member b.Test () =
         let testDataSets = testDictionaries
 
         let mutable acc = 0

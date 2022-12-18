@@ -2,7 +2,11 @@
 
 open System.Collections.Generic
 
-type [<Measure>] Key
+[<Struct>]
+type Key =
+    {
+        Value : int
+    }
 
 type KeyCount =
     | ``10``       = 0
@@ -13,12 +17,12 @@ type KeyCount =
     | ``MaxFill%`` = 5
 
 let valueCounts = [|
-    KeyCount.``10``       , 10
-    KeyCount.``100``      , 100
-    KeyCount.``1_000``    , 1_000
-    KeyCount.``10_000``   , 10_000
-    KeyCount.``MaxFill%`` , 384
-    KeyCount.``MinFill%`` , 385
+    KeyCount.``10``       , 64
+    KeyCount.``100``      , 128
+    KeyCount.``1_000``    , 256
+    KeyCount.``10_000``   , 1024
+    KeyCount.``MaxFill%`` , 380
+    KeyCount.``MinFill%`` , 390
 |]
 
 let rng = System.Random 123
@@ -36,7 +40,7 @@ let dataSets =
              while d.Count < count do
                  // Make the range of keys brutal for a naive Hashing function for mapping
                  // keys to slots
-                 let k = 1<Key> * ((rng.Next (minKey, maxKey)) <<< 16)
+                 let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
                  let v = rng.Next maxValue
                  d[k] <- v
 

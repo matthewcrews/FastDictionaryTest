@@ -54,7 +54,7 @@ type EmbeddedHead () =
         acc
 
     [<Benchmark(Description = "Embedded Head")>]
-    member b.Naive () =
+    member b.Test () =
         let testDataSets = testDictionaries
 
         let mutable acc = 0
