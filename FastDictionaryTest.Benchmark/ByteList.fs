@@ -36,10 +36,10 @@ type ByteList () =
              , KeyCount.``100``
              , KeyCount.``1_000``
              , KeyCount.``10_000``
-             // , KeyCount.``MinFill%``
-             // , KeyCount.``MaxFill%``
+             , KeyCount.``MinFill%``
+             , KeyCount.``MaxFill%``
              )>]
-    member val KeyCount = KeyCount.``10`` with get, set
+    member val KeyCount = KeyCount.``1_000`` with get, set
 
 
     [<Benchmark(Description = "Dictionary")>]
@@ -51,8 +51,8 @@ type ByteList () =
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
-            let keys = keySet[testKey]
+            let data = dataSets[0]
+            let keys = keySet[0]
 
             for k in keys do
                 acc <- acc + data[k]
@@ -68,8 +68,8 @@ type ByteList () =
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
-            let keys = keySet[testKey]
+            let data = dataSets[0]
+            let keys = keySet[0]
 
             for k in keys do
                 acc <- acc + data[k]
