@@ -47,13 +47,13 @@ open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
-    let isKeyValueType = typeof<'Key>.IsValueType
+    // let isKeyValueType = typeof<'Key>.IsValueType
 
     let refComparer =
-        if isKeyValueType then
+        if typeof<'Key>.IsValueType then
             Unchecked.defaultof<_>
         else
-            EqualityComparer<'Key>.Default
+            EqualityComparer<'Key>.Default :> IEqualityComparer<'Key>
 
     // Track the number of items in Dictionary for resize
     let mutable count = 0
@@ -216,7 +216,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     do
         for key, value in entries do
             let hashCode =
-                if isKeyValueType then
+                if typeof<'Key>.IsValueType then
                     (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
                 else
                     (refComparer.GetHashCode key) &&& 0x7FFF_FFFF
@@ -227,7 +227,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     member d.Item
         with get (key: 'Key) =
-            if isKeyValueType then
+            if typeof<'Key>.IsValueType then
                 structGetValue key
             else
                 refGetValue key
