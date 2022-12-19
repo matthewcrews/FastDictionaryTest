@@ -15,19 +15,27 @@ type RefKey =
 
 type KeyCount =
     | ``10``       = 0
-    | ``100``      = 1
-    | ``1_000``    = 2
-    | ``10_000``   = 3
-    | ``MinFill%`` = 4
-    | ``MaxFill%`` = 5
+    | ``20``       = 1
+    | ``100``      = 2
+    | ``200``      = 3
+    | ``1_000``    = 4
+    | ``2_000``    = 5
+    | ``10_000``   = 6
+    | ``20_000``   = 7
+    | ``MaxFill%`` = 8
+    | ``MinFill%`` = 9
 
 let valueCounts = [|
-    KeyCount.``10``       , 64
-    KeyCount.``100``      , 128
-    KeyCount.``1_000``    , 256
-    KeyCount.``10_000``   , 1024
-    KeyCount.``MaxFill%`` , 380
-    KeyCount.``MinFill%`` , 390
+    KeyCount.``10``       , 10
+    KeyCount.``20``       , 20
+    KeyCount.``100``      , 100
+    KeyCount.``200``      , 200
+    KeyCount.``1_000``    , 1_000
+    KeyCount.``2_000``    , 2_000
+    KeyCount.``10_000``   , 10_000
+    KeyCount.``20_000``   , 20_000
+    KeyCount.``MaxFill%`` , 190
+    KeyCount.``MinFill%`` , 194
 |]
 
 let rng = System.Random 123

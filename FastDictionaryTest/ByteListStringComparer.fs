@@ -106,23 +106,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     let rec addEntry (hashCode: int) (key: 'Key) (value: 'Value) =
 
-        let rec insertIntoNextEmptyBucket (hashCode: int) (offset: byte) (bucketIdx: int) : byte =
-            if bucketIdx < buckets.Length then
-                let bucket = &buckets[bucketIdx]
-                if bucket.IsAvailable then
-                    bucket.PrevOffset <- offset
-                    bucket.NextOffset <- 0uy
-                    bucket.HashCode <- hashCode
-                    bucket.Key <- key
-                    bucket.Value <- value
-                    count <- count + 1
-                    offset
-                else
-                    insertIntoNextEmptyBucket hashCode (offset + 1uy) (bucketIdx + 1)
-
-            else
-                insertIntoNextEmptyBucket hashCode offset 0
-
         let evict (bucketIdx: int) =
             let bucket = &buckets[bucketIdx]
             let parentBucketIdx = (bucketIdx - (int bucket.PrevOffset)) &&& wrapAroundMask
@@ -140,6 +123,23 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 buckets[parentBucketIdx].NextOffset <- buckets[parentBucketIdx].NextOffset + bucket.NextOffset
                 buckets[childBucketIdx].PrevOffset <- buckets[childBucketIdx].PrevOffset + bucket.PrevOffset
                 addEntry bucket.HashCode bucket.Key bucket.Value
+
+        let rec insertIntoNextEmptyBucket (hashCode: int) (offset: byte) (bucketIdx: int) : byte =
+            if bucketIdx < buckets.Length then
+                let bucket = &buckets[bucketIdx]
+                if bucket.IsAvailable then
+                    bucket.PrevOffset <- offset
+                    bucket.NextOffset <- 0uy
+                    bucket.HashCode <- hashCode
+                    bucket.Key <- key
+                    bucket.Value <- value
+                    count <- count + 1
+                    offset
+                else
+                    insertIntoNextEmptyBucket hashCode (offset + 1uy) (bucketIdx + 1)
+
+            else
+                insertIntoNextEmptyBucket hashCode offset 0
 
         let rec listSearch (hashCode: int) (bucketIdx: int) =
             let bucket = &buckets[bucketIdx]

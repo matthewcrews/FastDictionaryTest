@@ -33,11 +33,15 @@ type ByteListStringComparer () =
 
     [<Params(
              KeyCount.``10``
+             , KeyCount.``20``
              , KeyCount.``100``
+             , KeyCount.``200``
              , KeyCount.``1_000``
+             , KeyCount.``2_000``
              , KeyCount.``10_000``
-             , KeyCount.``MinFill%``
-             , KeyCount.``MaxFill%``
+             , KeyCount.``20_000``
+             // , KeyCount.``MinFill%``
+             // , KeyCount.``MaxFill%``
              )>]
     member val KeyCount = KeyCount.``10`` with get, set
 
