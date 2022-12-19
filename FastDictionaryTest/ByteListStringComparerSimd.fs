@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.ByteListSimd
+﻿namespace FastDictionaryTest.ByteListStringComparerSimd
 
 open System
 open System.Numerics
