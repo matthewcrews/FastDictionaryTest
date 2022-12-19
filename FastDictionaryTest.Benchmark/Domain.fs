@@ -40,7 +40,9 @@ let dataSets =
              while d.Count < count do
                  // Make the range of keys brutal for a naive Hashing function for mapping
                  // keys to slots
-                 let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
+                 // let k = ((rng.Next (minKey, maxKey)) <<< 16)
+                 let k = { Value = ((rng.Next (minKey, maxKey)) <<< 16) }
+                 // let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
                  let v = rng.Next maxValue
                  d[k] <- v
 

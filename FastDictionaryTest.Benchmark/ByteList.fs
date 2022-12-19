@@ -33,8 +33,8 @@ type ByteList () =
 
     [<Params(
              KeyCount.``10``
-             , KeyCount.``100``
-             , KeyCount.``1_000``
+             // , KeyCount.``100``
+             // , KeyCount.``1_000``
              , KeyCount.``10_000``
              // , KeyCount.``MinFill%``
              // , KeyCount.``MaxFill%``
