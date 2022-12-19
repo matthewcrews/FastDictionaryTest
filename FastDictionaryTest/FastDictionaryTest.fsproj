@@ -7,22 +7,23 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Naive.fs"/>
-        <Compile Include="FibonacciHashing.fs"/>
-        <Compile Include="ZeroAlloc.fs"/>
-        <Compile Include="ArrayBuckets.fs"/>
-        <Compile Include="EmbeddedHead.fs"/>
-        <Compile Include="LinearProbing.fs"/>
-        <Compile Include="CacheHashCode.fs"/>
-        <Compile Include="Simd.fs"/>
-        <Compile Include="Simd2.fs"/>
-        <Compile Include="Monomorphization.fs"/>
-        <Compile Include="Specialized.fs"/>
-        <Compile Include="RobinHood.fs"/>
-        <Compile Include="RobinHoodSimd.fs"/>
-        <Compile Include="RobinHoodSimdSwitch.fs"/>
-        <Compile Include="RobinHoodEviction.fs"/>
-        <Compile Include="ByteList.fs"/>
+        <Compile Include="Naive.fs" />
+        <Compile Include="FibonacciHashing.fs" />
+        <Compile Include="ZeroAlloc.fs" />
+        <Compile Include="ArrayBuckets.fs" />
+        <Compile Include="EmbeddedHead.fs" />
+        <Compile Include="LinearProbing.fs" />
+        <Compile Include="CacheHashCode.fs" />
+        <Compile Include="Simd.fs" />
+        <Compile Include="Simd2.fs" />
+        <Compile Include="Monomorphization.fs" />
+        <Compile Include="Specialized.fs" />
+        <Compile Include="RobinHood.fs" />
+        <Compile Include="RobinHoodSimd.fs" />
+        <Compile Include="RobinHoodSimdSwitch.fs" />
+        <Compile Include="RobinHoodEviction.fs" />
+        <Compile Include="ByteList.fs" />
+        <Compile Include="ByteListStringComparer.fs" />
     </ItemGroup>
 
 </Project>

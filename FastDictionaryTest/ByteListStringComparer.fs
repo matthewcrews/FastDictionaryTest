@@ -1,7 +1,8 @@
-﻿namespace FastDictionaryTest.ByteList
+﻿namespace FastDictionaryTest.ByteListStringComparer
 
 open System
 open System.Numerics
+open System.Runtime.CompilerServices
 open Microsoft.FSharp.NativeInterop
 open System.Collections.Generic
 
@@ -50,11 +51,44 @@ module private Helpers =
                 Value = Unchecked.defaultof<'Value>
             }
 
+    let stringComparer =
+        { new IEqualityComparer<string> with
+            member _.Equals (a: string, b: string) =
+                String.Equals (a, b)
+
+            member _.GetHashCode (a: string) =
+                let charSpan = MemoryExtensions.AsSpan a
+                let mutable hash1 = (5381UL <<< 16) + 5381UL
+                let mutable hash2 = hash1
+                let mutable length = a.Length
+                let mutable ptr : nativeptr<uint64> =
+                    &&charSpan.GetPinnableReference()
+                    |> retype
+                while length > 6 do
+                    length <- length - 8
+                    hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr 0)
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 1)
+                    ptr <- NativePtr.add ptr 2
+
+                if length > 0 then
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 0)
+
+                int (hash1 + (hash2 * 1566083941UL))
+        }
 
 open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
+    // If the type of 'Key is a ref type, we will want to cache the EqualityComparer
+    let refComparer =
+        if typeof<'Key>.IsValueType then
+            Unchecked.defaultof<_>
+        elif typeof<'Key> = typeof<string> then
+            stringComparer :?> IEqualityComparer<'Key>
+        else
+            EqualityComparer<'Key>.Default :> IEqualityComparer<'Key>
+
     // Track the number of items in Dictionary for resize
     let mutable count = 0
     // Create the Buckets with some initial capacity
@@ -64,9 +98,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Used for Wrap Around addition/subtraction of offsets
     let mutable wrapAroundMask = buckets.Length - 1
 
-    // We use this function to ensure
-    let computeHashCode (key: 'Key) =
-        (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
 
     let computeBucketIndex (hashCode: int) =
         let hashProduct = (uint hashCode) * 2654435769u
@@ -166,8 +197,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             listSearch hashCode bucketIdx
 
 
-    let getValue (key: 'Key) =
-        let hashCode = computeHashCode key
+    let structGetValue (key: 'Key) =
+        let hashCode = (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
 
         let rec loop (bucketIdx: int) =
             if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
@@ -182,6 +213,21 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         let bucketIdx = computeBucketIndex hashCode
         loop bucketIdx
 
+    let refGetValue (key: 'Key) =
+        let hashCode = (refComparer.GetHashCode key) &&& 0x7FFF_FFFF
+
+        let rec loop (bucketIdx: int) =
+            if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
+               refComparer.Equals (key, buckets[bucketIdx].Key) then
+                buckets[bucketIdx].Value
+            elif buckets[bucketIdx].IsLast then
+                raise (KeyNotFoundException())
+            else
+                let nextBucketIdx = (bucketIdx + (int buckets[bucketIdx].NextOffset)) &&& wrapAroundMask
+                loop nextBucketIdx
+
+        let bucketIdx = computeBucketIndex hashCode
+        loop bucketIdx
 
     // Increase the size of the backing array if the max fill percent has been reached
     // and migrate all of the entries.
@@ -203,11 +249,19 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     do
         for key, value in entries do
-            let hashCode = computeHashCode key
+            let hashCode =
+                if typeof<'Key>.IsValueType then
+                    (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
+                else
+                    (refComparer.GetHashCode key) &&& 0x7FFF_FFFF
             addEntry hashCode key value
             resize()
 
     new () = Dictionary<'Key, 'Value>([])
 
     member d.Item
-        with get (key: 'Key) = getValue key
+        with get (key: 'Key) =
+            if typeof<'Key>.IsValueType then
+                structGetValue key
+            else
+                refGetValue key

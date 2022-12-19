@@ -75,6 +75,11 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
+    | "byteliststringcomparer" ->
+        let b = ByteListStringComparer()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
     | unknownVersion ->
         failwith $"Unknown version: {unknownVersion}"
 
@@ -135,6 +140,10 @@ let main argv =
 
         | "bytelist" ->
             let _ = BenchmarkRunner.Run<ByteList>()
+            ()
+
+        | "byteliststringcomparer" ->
+            let _ = BenchmarkRunner.Run<ByteListStringComparer>()
             ()
 
         | unknownSuite ->

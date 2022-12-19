@@ -7,30 +7,31 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Domain.fs"/>
-        <Compile Include="Baseline.fs"/>
-        <Compile Include="Naive.fs"/>
-        <Compile Include="FibonacciHashing.fs"/>
-        <Compile Include="ZeroAlloc.fs"/>
-        <Compile Include="ArrayBuckets.fs"/>
-        <Compile Include="EmbeddedHead.fs"/>
-        <Compile Include="LinearProbing.fs"/>
-        <Compile Include="CacheHashCode.fs"/>
-        <Compile Include="RobinHood.fs"/>
-        <Compile Include="RobinHoodEviction.fs"/>
-        <Compile Include="ByteList.fs"/>
+        <Compile Include="Domain.fs" />
+        <Compile Include="Baseline.fs" />
+        <Compile Include="Naive.fs" />
+        <Compile Include="FibonacciHashing.fs" />
+        <Compile Include="ZeroAlloc.fs" />
+        <Compile Include="ArrayBuckets.fs" />
+        <Compile Include="EmbeddedHead.fs" />
+        <Compile Include="LinearProbing.fs" />
+        <Compile Include="CacheHashCode.fs" />
+        <Compile Include="RobinHood.fs" />
+        <Compile Include="RobinHoodEviction.fs" />
+        <Compile Include="ByteList.fs" />
+        <Compile Include="ByteListStringComparer.fs" />
         <!--        <Compile Include="Benchmarks.fs" />-->
-        <Compile Include="Program.fs"/>
+        <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\FastDictionaryTest\FastDictionaryTest.fsproj"/>
+        <ProjectReference Include="..\FastDictionaryTest\FastDictionaryTest.fsproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Argu" Version="6.1.1"/>
-        <PackageReference Include="BenchmarkDotNet" Version="0.13.2"/>
-        <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.2"/>
+        <PackageReference Include="Argu" Version="6.1.1" />
+        <PackageReference Include="BenchmarkDotNet" Version="0.13.2" />
+        <PackageReference Include="BenchmarkDotNet.Diagnostics.Windows" Version="0.13.2" />
     </ItemGroup>
 
 </Project>
