@@ -80,8 +80,13 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
-    | "byteliststringcomparersimd" ->
-        let b = ByteListStringComparerSimd()
+    | "byteliststringcomparerrobinhood" ->
+        let b = ByteListStringComparerRobinHood()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "byteliststringcomparerrobinhoodvec128" ->
+        let b = ByteListStringComparerRobinHoodVec128()
         for i in 1 .. loopCount do
             result <- b.Test()
 
@@ -151,8 +156,12 @@ let main argv =
             let _ = BenchmarkRunner.Run<ByteListStringComparer>()
             ()
 
-        | "byteliststringcomparersimd" ->
-            let _ = BenchmarkRunner.Run<ByteListStringComparerSimd>()
+        | "byteliststringcomparerrobinhood" ->
+            let _ = BenchmarkRunner.Run<ByteListStringComparerRobinHood>()
+            ()
+
+        | "byteliststringcomparerrobinhoodvec128" ->
+            let _ = BenchmarkRunner.Run<ByteListStringComparerRobinHoodVec128>()
             ()
 
         | unknownSuite ->

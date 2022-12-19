@@ -14,17 +14,12 @@
         <Compile Include="EmbeddedHead.fs" />
         <Compile Include="LinearProbing.fs" />
         <Compile Include="CacheHashCode.fs" />
-        <Compile Include="Simd.fs" />
-        <Compile Include="Simd2.fs" />
-        <Compile Include="Monomorphization.fs" />
-        <Compile Include="Specialized.fs" />
         <Compile Include="RobinHood.fs" />
-        <Compile Include="RobinHoodSimd.fs" />
-        <Compile Include="RobinHoodSimdSwitch.fs" />
         <Compile Include="RobinHoodEviction.fs" />
         <Compile Include="ByteList.fs" />
         <Compile Include="ByteListStringComparer.fs" />
-        <Compile Include="ByteListStringComparerSimd.fs" />
+        <Compile Include="ByteListStringComparerRobinHood.fs" />
+        <Compile Include="ByteListStringComparerRobinHoodVec128.fs" />
     </ItemGroup>
 
 </Project>

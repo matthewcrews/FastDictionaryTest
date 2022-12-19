@@ -11,7 +11,7 @@ open FastDictionaryTest.Benchmark.Domain
 [<HardwareCounters(HardwareCounter.CacheMisses,
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
-type ByteListStringComparerSimd () =
+type ByteListStringComparerRobinHood () =
 
     let dictionaries =
         [| for countKey, _ in valueCounts ->
@@ -26,20 +26,20 @@ type ByteListStringComparerSimd () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 dataSets[int countKey][testKey]
-                |> ByteListStringComparerSimd.Dictionary
+                |> ByteListStringComparerRobinHood.Dictionary
             |]
         |]
 
 
     [<Params(
              KeyCount.``10``
-             // , KeyCount.``20``
-             // , KeyCount.``100``
-             // , KeyCount.``200``
-             // , KeyCount.``1_000``
-             // , KeyCount.``2_000``
+             , KeyCount.``20``
+             , KeyCount.``100``
+             , KeyCount.``200``
+             , KeyCount.``1_000``
+             , KeyCount.``2_000``
              , KeyCount.``10_000``
-             // , KeyCount.``20_000``
+             , KeyCount.``20_000``
              // , KeyCount.``MinFill%``
              // , KeyCount.``MaxFill%``
              )>]

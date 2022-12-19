@@ -87,41 +87,6 @@ let ``CacheHashCode Dictionary matches`` () =
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
 
-[<Test>]
-let ``Simd Dictionary matches`` () =
-
-    let testDictionary = Simd.Dictionary data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
-
-[<Test>]
-let ``Simd2 Dictionary matches`` () =
-
-    let testDictionary = Simd2.Dictionary data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
-
-[<Test>]
-let ``Monomorphization Dictionary matches`` () =
-
-    let testDictionary = Monomorphization.Dictionary.ofSeq data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
-
-[<Test>]
-let ``Lambda Dictionary matches`` () =
-
-    let testDictionary = Lambda.Dictionary.ofSeq data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
 
 [<Test>]
 let ``RobinHood Dictionary matches`` () =
@@ -132,23 +97,6 @@ let ``RobinHood Dictionary matches`` () =
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
 
-[<Test>]
-let ``RobinHoodSimd Dictionary matches`` () =
-
-    let testDictionary = RobinHoodSimd.Dictionary data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
-
-[<Test>]
-let ``RobinHoodSimdSwitch Dictionary matches`` () =
-
-    let testDictionary = RobinHoodSimdSwitch.Dictionary data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
 
 [<Test>]
 let ``RobinHoodEviction Dictionary matches`` () =
@@ -159,6 +107,7 @@ let ``RobinHoodEviction Dictionary matches`` () =
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
 
+
 [<Test>]
 let ``ByteList Dictionary matches`` () =
 
@@ -167,6 +116,7 @@ let ``ByteList Dictionary matches`` () =
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
+
 
 [<Test>]
 let ``ByteListStringComparer Dictionary matches`` () =
@@ -177,10 +127,21 @@ let ``ByteListStringComparer Dictionary matches`` () =
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
 
-[<Test>]
-let ``ByteListSimd Dictionary matches`` () =
 
-    let testDictionary = ByteListSimd.Dictionary data
+[<Test>]
+let ``ByteListStringComparerRobinHood Dictionary matches`` () =
+
+    let testDictionary = ByteListStringComparerRobinHood.Dictionary data
+
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = testDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)
+
+
+[<Test>]
+let ``ByteListStringComparerVec128 Dictionary matches`` () =
+
+    let testDictionary = ByteListStringComparerRobinHoodVec128.Dictionary data
 
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]

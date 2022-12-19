@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.ByteListStringComparer
+﻿namespace FastDictionaryTest.ByteListStringComparerRobinHood
 
 open System
 open System.Numerics
@@ -127,6 +127,17 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             if bucketIdx < buckets.Length then
                 let bucket = &buckets[bucketIdx]
                 if bucket.IsAvailable then
+                    bucket.PrevOffset <- offset
+                    bucket.NextOffset <- 0uy
+                    bucket.HashCode <- hashCode
+                    bucket.Key <- key
+                    bucket.Value <- value
+                    count <- count + 1
+                    offset
+                // Test if this is an entry that is not at its home bucket and is
+                // closer to its home than this new entry will be. This is Robin Hood hashing
+                elif bucket.IsTail && offset > bucket.PrevOffset then
+                    evict bucketIdx
                     bucket.PrevOffset <- offset
                     bucket.NextOffset <- 0uy
                     bucket.HashCode <- hashCode

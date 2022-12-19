@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.ByteListStringComparerSimd
+﻿namespace FastDictionaryTest.ByteListStringComparerRobinHoodVec128
 
 open System
 open System.Numerics
@@ -7,7 +7,7 @@ open System.Collections.Generic
 open System.Runtime.Intrinsics
 open System.Runtime.Intrinsics.X86
 
-#nowarn "9" "42"
+#nowarn "9" "42" "51"
 
 module private Helpers =
 
@@ -241,26 +241,22 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         let bucketIdx = computeBucketIndex hashCode
 
-        if bucketIdx < buckets.Length - 8 then
-            let hashCodeVec = Vector256.Create hashCode
-            let bucketsHashCodeVec = Vector256.Create (
+        if bucketIdx < buckets.Length - 4 then
+            let hashCodeVec = Vector128.Create hashCode
+            let bucketsHashCodeVec = Vector128.Create (
                 buckets[bucketIdx].HashCode,
                 buckets[bucketIdx + 1].HashCode,
                 buckets[bucketIdx + 2].HashCode,
-                buckets[bucketIdx + 3].HashCode,
-                buckets[bucketIdx + 4].HashCode,
-                buckets[bucketIdx + 5].HashCode,
-                buckets[bucketIdx + 6].HashCode,
-                buckets[bucketIdx + 7].HashCode
+                buckets[bucketIdx + 3].HashCode
                 )
 
             let compareResult =
                 Avx2.CompareEqual (hashCodeVec, bucketsHashCodeVec)
-                |> retype<_, Vector256<float32>>
-            let moveMask = Avx2.MoveMask compareResult
+                |> retype<_, Vector128<float32>>
+            let moveMask = Sse2.MoveMask compareResult
             let offset = BitOperations.TrailingZeroCount moveMask
 
-            if offset <= 7 &&
+            if offset <= 3 &&
                EqualityComparer.Default.Equals (key, buckets[bucketIdx + offset].Key) then
                 buckets[bucketIdx + offset].Value
             else
