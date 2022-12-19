@@ -1,8 +1,13 @@
 ﻿namespace FastDictionaryTest.ByteList
 
+open System
+open System.Numerics
+open Microsoft.FSharp.NativeInterop
 open System.Collections.Generic
 
 module private Helpers =
+
+    let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
 
     [<RequireQualifiedAccess>]
     module HashCode =
@@ -43,15 +48,41 @@ module private Helpers =
                 Value = Unchecked.defaultof<'Value>
             }
 
+    let stringComparer =
+        { new IEqualityComparer<string> with
+            member _.Equals (a: string, b: string) =
+                String.Equals (a, b)
+
+            member _.GetHashCode (a: string) =
+                let charSpan = MemoryExtensions.AsSpan a
+                let mutable hash1 = (5381u <<< 16) + 5381u
+                let mutable hash2 = hash1
+                let mutable length = a.Length
+                let mutable ptr : nativeptr<uint> =
+                    &&charSpan.GetPinnableReference()
+                    |> retype
+                while length > 2 do
+                    length <- length - 4
+                    hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr 0)
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 1)
+                    ptr <- NativePtr.add ptr 2
+
+                if length > 0 then
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 0)
+
+                int (hash1 + (hash2 * 1566083941u))
+        }
+
 open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
-    // let isKeyValueType = typeof<'Key>.IsValueType
-
+    // If the type of 'Key is a ref type, we will want to cache the EqualityComparer
     let refComparer =
         if typeof<'Key>.IsValueType then
             Unchecked.defaultof<_>
+        elif typeof<'Key> = typeof<string> then
+            stringComparer :?> IEqualityComparer<'Key>
         else
             EqualityComparer<'Key>.Default :> IEqualityComparer<'Key>
 
@@ -205,7 +236,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             // Increase the size of the backing store
             buckets <- Array.create (buckets.Length <<< 1) Bucket.empty
-            bucketBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
+            bucketBitShift <- 64 - (BitOperations.TrailingZeroCount buckets.Length)
             wrapAroundMask <- buckets.Length - 1
             count <- 0
 

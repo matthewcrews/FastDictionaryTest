@@ -3,7 +3,12 @@
 open System.Collections.Generic
 
 [<Struct>]
-type Key =
+type StructKey =
+    {
+        Value : int
+    }
+
+type RefKey =
     {
         Value : int
     }
@@ -41,8 +46,9 @@ let dataSets =
                  // Make the range of keys brutal for a naive Hashing function for mapping
                  // keys to slots
                  // let k = ((rng.Next (minKey, maxKey)) <<< 16)
-                 let k = { Value = ((rng.Next (minKey, maxKey)) <<< 16) }
-                 // let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
+                 // let k : StructKey = { Value = ((rng.Next (minKey, maxKey)) <<< 16) }
+                 // let k : RefKey = { Value = ((rng.Next (minKey, maxKey)) <<< 16) }
+                 let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
                  let v = rng.Next maxValue
                  d[k] <- v
 
