@@ -1,9 +1,11 @@
-﻿namespace FastDictionaryTest.ByteListStringComparer
+﻿namespace FastDictionaryTest.ByteListSimd
 
 open System
 open System.Numerics
 open Microsoft.FSharp.NativeInterop
 open System.Collections.Generic
+open System.Runtime.Intrinsics
+open System.Runtime.Intrinsics.X86
 
 #nowarn "9" "42"
 
@@ -223,6 +225,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         let bucketIdx = computeBucketIndex hashCode
         loop bucketIdx
 
+
     let refGetValue (key: 'Key) =
         let hashCode = (refComparer.GetHashCode key) &&& 0x7FFF_FFFF
 
@@ -237,7 +240,33 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 loop nextBucketIdx
 
         let bucketIdx = computeBucketIndex hashCode
-        loop bucketIdx
+
+        if bucketIdx < buckets.Length - 8 then
+            let hashCodeVec = Vector256.Create hashCode
+            let bucketsHashCodeVec = Vector256.Create (
+                buckets[bucketIdx].HashCode,
+                buckets[bucketIdx + 1].HashCode,
+                buckets[bucketIdx + 2].HashCode,
+                buckets[bucketIdx + 3].HashCode,
+                buckets[bucketIdx + 4].HashCode,
+                buckets[bucketIdx + 5].HashCode,
+                buckets[bucketIdx + 6].HashCode,
+                buckets[bucketIdx + 7].HashCode
+                )
+
+            let compareResult =
+                Avx2.CompareEqual (hashCodeVec, bucketsHashCodeVec)
+                |> retype<_, Vector256<float32>>
+            let moveMask = Avx2.MoveMask compareResult
+            let offset = BitOperations.TrailingZeroCount moveMask
+
+            if offset <= 7 &&
+               EqualityComparer.Default.Equals (key, buckets[bucketIdx + offset].Key) then
+                buckets[bucketIdx + offset].Value
+            else
+                loop bucketIdx
+        else
+            loop bucketIdx
 
     // Increase the size of the backing array if the max fill percent has been reached
     // and migrate all of the entries.

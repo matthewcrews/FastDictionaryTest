@@ -141,19 +141,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     buckets[bucketIdx + offset].Value
                 else
                     loop hashCode bucketIdx
-                    // // Check if any of the buckets are empty
-                    // let emptyVec = Vector128.Create HashCode.empty
-                    // let emptyCheckVec =
-                    //     Sse2.CompareEqual (bucketsHashCodeVec, emptyVec)
-                    //     |> retype<_, Vector128<float32>>
-                    //
-                    // let moveMask =
-                    //     Sse2.MoveMask emptyCheckVec
-                    //
-                    // if moveMask = 0 then
-                    //     avxLoop hashCode (bucketIdx + 3)
-                    // else
-                    //     raise (KeyNotFoundException())
+
             else
                 loop hashCode bucketIdx
 

@@ -24,6 +24,7 @@
         <Compile Include="RobinHoodEviction.fs" />
         <Compile Include="ByteList.fs" />
         <Compile Include="ByteListStringComparer.fs" />
+        <Compile Include="ByteListSimd.fs"/>
     </ItemGroup>
 
 </Project>

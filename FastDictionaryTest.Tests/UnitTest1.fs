@@ -21,7 +21,7 @@ let data =
     [for _ in 1..1_000 ->
         { Value = rng.Next (minKey, maxKey) }, rng.Next maxValue]
     |> List.distinctBy fst
-    
+
 let expectedValues =
     data
     |> List.map KeyValuePair
@@ -30,12 +30,9 @@ let expectedValues =
 
 [<Test>]
 let ``OpenChaining Dictionary matches`` () =
-    
-    let testDictionary = OpenChaining.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
+    let testDictionary = Naive.Dictionary data
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
@@ -43,25 +40,19 @@ let ``OpenChaining Dictionary matches`` () =
 
 [<Test>]
 let ``ZeroAlloc Dictionary matches`` () =
-    
+
     let testDictionary = ZeroAlloc.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
-        
+
+
 [<Test>]
 let ``Array Dictionary matches`` () =
-    
-    let testDictionary = Arrays.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
+    let testDictionary = ArrayBuckets.Dictionary data
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
@@ -69,125 +60,128 @@ let ``Array Dictionary matches`` () =
 
 [<Test>]
 let ``EmbeddedHead Dictionary matches`` () =
-    
+
     let testDictionary = EmbeddedHead.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
-        
+
+
 [<Test>]
 let ``LinearProbing Dictionary matches`` () =
-    
+
     let testDictionary = LinearProbing.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
-        
+
+
 [<Test>]
 let ``CacheHashCode Dictionary matches`` () =
-    
+
     let testDictionary = CacheHashCode.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``Simd Dictionary matches`` () =
-    
+
     let testDictionary = Simd.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``Simd2 Dictionary matches`` () =
-    
+
     let testDictionary = Simd2.Dictionary data
-    
-    for k, v in data do
-        testDictionary[k] <- v
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``Monomorphization Dictionary matches`` () =
-    
+
     let testDictionary = Monomorphization.Dictionary.ofSeq data
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``Lambda Dictionary matches`` () =
-    
+
     let testDictionary = Lambda.Dictionary.ofSeq data
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``RobinHood Dictionary matches`` () =
-    
+
     let testDictionary = RobinHood.Dictionary data
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``RobinHoodSimd Dictionary matches`` () =
-    
+
     let testDictionary = RobinHoodSimd.Dictionary data
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``RobinHoodSimdSwitch Dictionary matches`` () =
-    
+
     let testDictionary = RobinHoodSimdSwitch.Dictionary data
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``RobinHoodEviction Dictionary matches`` () =
-    
+
     let testDictionary = RobinHoodEviction.Dictionary data
-    
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
-        
+
 [<Test>]
 let ``ByteList Dictionary matches`` () =
-    
+
     let testDictionary = ByteList.Dictionary data
-    
+
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = testDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)
+
+[<Test>]
+let ``ByteListStringComparer Dictionary matches`` () =
+
+    let testDictionary = ByteListStringComparer.Dictionary data
+
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = testDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)
+
+[<Test>]
+let ``ByteListSimd Dictionary matches`` () =
+
+    let testDictionary = ByteListSimd.Dictionary data
+
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
