@@ -29,7 +29,7 @@ let expectedValues =
 
 
 [<Test>]
-let ``OpenChaining Dictionary matches`` () =
+let ``Naive Dictionary matches`` () =
 
     let testDictionary = Naive.Dictionary data
 

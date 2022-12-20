@@ -24,7 +24,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let mutable buckets : list<Entry<'Key, 'Value>>[] = Array.create 4 []
 
     let computeBucketIndex (k: 'Key) =
-        let h = hash k
+        let h = -1 * hash k
         let bucketIdx = h % buckets.Length
         bucketIdx
 
