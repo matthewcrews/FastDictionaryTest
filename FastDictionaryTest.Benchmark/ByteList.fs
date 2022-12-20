@@ -32,13 +32,11 @@ type ByteList () =
 
 
     [<Params(
-             KeyCount.``10``
-             , KeyCount.``100``
-             , KeyCount.``1_000``
-             , KeyCount.``10_000``
-             , KeyCount.``MinFill%``
-             , KeyCount.``MaxFill%``
-             )>]
+          KeyCount.``10``
+          , KeyCount.``100``
+          , KeyCount.``1_000``
+          , KeyCount.``10_000``
+        )>]
     member val KeyCount = KeyCount.``10`` with get, set
 
 
@@ -47,11 +45,11 @@ type ByteList () =
         let testDataSets = dictionaries
 
         let mutable acc = 0
-        let dataSets = testDataSets[int b.KeyCount]
+        let dataSet = testDataSets[int b.KeyCount]
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
+            let data = dataSet[testKey]
             let keys = keySet[testKey]
 
             for k in keys do
@@ -59,16 +57,16 @@ type ByteList () =
 
         acc
 
-    [<Benchmark(Description = "Byte List")>]
+    [<Benchmark(Description = "Byte List (BL)")>]
     member b.Test () =
         let testDataSets = testDictionaries
 
         let mutable acc = 0
-        let dataSets = testDataSets[int b.KeyCount]
+        let dataSet = testDataSets[int b.KeyCount]
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
+            let data = dataSet[testKey]
             let keys = keySet[testKey]
 
             for k in keys do

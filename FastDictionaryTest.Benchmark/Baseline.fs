@@ -69,11 +69,11 @@ type Baseline () =
         let testDataSets = maps
 
         let mutable acc = 0
-        let dataSets = testDataSets[int b.KeyCount]
+        let dataSet = testDataSets[int b.KeyCount]
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
+            let data = dataSet[testKey]
             let keys = keySet[testKey]
 
             for k in keys do
@@ -86,11 +86,11 @@ type Baseline () =
         let testDataSets = dictionaries
 
         let mutable acc = 0
-        let dataSets = testDataSets[int b.KeyCount]
+        let dataSet = testDataSets[int b.KeyCount]
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
+            let data = dataSet[testKey]
             let keys = keySet[testKey]
 
             for k in keys do
@@ -103,11 +103,11 @@ type Baseline () =
         let testDataSets = readOnlyDictionaries
 
         let mutable acc = 0
-        let dataSets = testDataSets[int b.KeyCount]
+        let dataSet = testDataSets[int b.KeyCount]
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
+            let data = dataSet[testKey]
             let keys = keySet[testKey]
 
             for k in keys do
@@ -120,11 +120,11 @@ type Baseline () =
         let testDataSets = dicts
 
         let mutable acc = 0
-        let dataSets = testDataSets[int b.KeyCount]
+        let dataSet = testDataSets[int b.KeyCount]
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
+            let data = dataSet[testKey]
             let keys = keySet[testKey]
 
             for k in keys do
@@ -137,11 +137,11 @@ type Baseline () =
         let testDataSets = readOnlyDicts
 
         let mutable acc = 0
-        let dataSets = testDataSets[int b.KeyCount]
+        let dataSet = testDataSets[int b.KeyCount]
         let keySet = keySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
-            let data = dataSets[testKey]
+            let data = dataSet[testKey]
             let keys = keySet[testKey]
 
             for k in keys do
