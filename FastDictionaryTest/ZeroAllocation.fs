@@ -54,7 +54,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 count <- count + 1
                 newEntry :: acc
             | head::tail ->
-                if EqualityComparer<'Key>.Default.Equals (head.Key, key) then
+                if EqualityComparer.Default.Equals (head.Key, key) then
                     // Do not increment the count in this case because we are just overwriting an
                     // exising value
                     let updatedEntry = { head with Value = value }
