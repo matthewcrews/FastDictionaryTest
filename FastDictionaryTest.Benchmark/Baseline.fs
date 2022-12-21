@@ -12,18 +12,18 @@ open FastDictionaryTest.Benchmark.Domain
                    HardwareCounter.BranchMispredictions)>]
 type Baseline () =
 
-    let maps =
+    let intMaps =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
-                dataSets[int countKey][testKey]
+                intDataSets[int countKey][testKey]
                 |> Map
             |]
         |]
 
-    let dictionaries =
+    let intDictionaries =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
-                dataSets[int countKey][testKey]
+                intDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
             |]
@@ -32,7 +32,7 @@ type Baseline () =
     let readOnlyDictionaries =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
-                dataSets[int countKey][testKey]
+                intDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
                 |> ReadOnlyDictionary
@@ -42,7 +42,7 @@ type Baseline () =
     let dicts =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
-                dataSets[int countKey][testKey]
+                intDataSets[int countKey][testKey]
                 |> dict
             |]
         |]
@@ -50,10 +50,13 @@ type Baseline () =
     let readOnlyDicts =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
-                dataSets[int countKey][testKey]
+                intDataSets[int countKey][testKey]
                 |> readOnlyDict
             |]
         |]
+
+    [<Params(KeyType.Int, KeyType.String)>]
+    member val KeyType = KeyType.Int with get, set
 
     [<Params(
           KeyCount.``10``
@@ -66,28 +69,31 @@ type Baseline () =
 
     [<Benchmark(Description = "F# Map")>]
     member b.Map () =
-        let testDataSets = maps
-
         let mutable acc = 0
-        let dataSet = testDataSets[int b.KeyCount]
-        let keySet = keySets[int b.KeyCount]
 
-        for testKey in 0 .. testCount - 1 do
-            let data = dataSet[testKey]
-            let keys = keySet[testKey]
+        if b.KeyType = KeyType.Int then
 
-            for k in keys do
-                acc <- acc + data[k]
+            let testDataSets = intMaps
+
+            let dataSet = testDataSets[int b.KeyCount]
+            let keySet = intKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
 
         acc
 
     [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
-        let testDataSets = dictionaries
+        let testDataSets = intDictionaries
 
         let mutable acc = 0
         let dataSet = testDataSets[int b.KeyCount]
-        let keySet = keySets[int b.KeyCount]
+        let keySet = intKeySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
             let data = dataSet[testKey]
@@ -104,7 +110,7 @@ type Baseline () =
 
         let mutable acc = 0
         let dataSet = testDataSets[int b.KeyCount]
-        let keySet = keySets[int b.KeyCount]
+        let keySet = intKeySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
             let data = dataSet[testKey]
@@ -121,7 +127,7 @@ type Baseline () =
 
         let mutable acc = 0
         let dataSet = testDataSets[int b.KeyCount]
-        let keySet = keySets[int b.KeyCount]
+        let keySet = intKeySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
             let data = dataSet[testKey]
@@ -138,7 +144,7 @@ type Baseline () =
 
         let mutable acc = 0
         let dataSet = testDataSets[int b.KeyCount]
-        let keySet = keySets[int b.KeyCount]
+        let keySet = intKeySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
             let data = dataSet[testKey]

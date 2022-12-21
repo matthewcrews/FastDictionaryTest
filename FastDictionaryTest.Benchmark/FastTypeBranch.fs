@@ -11,7 +11,7 @@ open FastDictionaryTest.Benchmark.Domain
 [<HardwareCounters(HardwareCounter.CacheMisses,
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
-type ByteListRobinHoodVec128 () =
+type FastTypeBranch () =
 
     let intDictionaries =
         [| for countKey, _ in valueCounts ->
@@ -35,7 +35,7 @@ type ByteListRobinHoodVec128 () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 intDataSets[int countKey][testKey]
-                |> ByteListRobinHoodVec128.Dictionary
+                |> FastTypeBranch.Dictionary
             |]
         |]
 
@@ -43,7 +43,7 @@ type ByteListRobinHoodVec128 () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 strDataSets[int countKey][testKey]
-                |> ByteListRobinHoodVec128.Dictionary
+                |> FastTypeBranch.Dictionary
             |]
         |]
 
@@ -91,7 +91,7 @@ type ByteListRobinHoodVec128 () =
             acc
 
 
-    [<Benchmark(Description = "Cache Equality")>]
+    [<Benchmark(Description = "Fast Type Branch")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then

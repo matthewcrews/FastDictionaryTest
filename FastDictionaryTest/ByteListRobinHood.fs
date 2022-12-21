@@ -218,47 +218,47 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             listSearch hashCode bucketIdx
 
 
-    let getValue (key: 'Key) =
+    let getStructValue (key: 'Key) =
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let hashCode = computeHashCode key
+        let rec loop (bucketIdx: int) =
+            let bucket = buckets[bucketIdx]
+
+            if hashCode = bucket.HashCode &&
+               EqualityComparer.Default.Equals (key, bucket.Key) then
+                bucket.Value
+
+            elif bucket.IsLast then
+                raise (KeyNotFoundException())
+
+            else
+                let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
+                loop nextBucketIdx
+
         let bucketIdx = computeBucketIndex hashCode
+        loop bucketIdx
 
-        if typeof<'Key>.IsValueType then
 
-            let rec loop (bucketIdx: int) =
-                let bucket = buckets[bucketIdx]
+    let getRefValue (key: 'Key) =
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
 
-                if hashCode = bucket.HashCode &&
-                   EqualityComparer.Default.Equals (key, bucket.Key) then
-                    bucket.Value
+        let rec loop (bucketIdx: int) =
+            let bucket = buckets[bucketIdx]
 
-                elif bucket.IsLast then
-                    raise (KeyNotFoundException())
+            if hashCode = bucket.HashCode &&
+               refComparer.Equals (key, bucket.Key) then
+                bucket.Value
 
-                else
-                    let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
-                    loop nextBucketIdx
+            elif bucket.IsLast then
+                raise (KeyNotFoundException())
 
-            let bucketIdx = computeBucketIndex hashCode
-            loop bucketIdx
+            else
+                let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
+                loop nextBucketIdx
 
-        else
+        let bucketIdx = computeBucketIndex hashCode
+        loop bucketIdx
 
-            let rec loop (bucketIdx: int) =
-                let bucket = buckets[bucketIdx]
-
-                if hashCode = bucket.HashCode &&
-                   refComparer.Equals (key, bucket.Key) then
-                    bucket.Value
-
-                elif bucket.IsLast then
-                    raise (KeyNotFoundException())
-
-                else
-                    let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
-                    loop nextBucketIdx
-
-            loop bucketIdx
 
     // Increase the size of the backing array if the max fill percent has been reached
     // and migrate all of the entries.
@@ -287,4 +287,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     new () = Dictionary<'Key, 'Value>([])
 
     member d.Item
-        with get (key: 'Key) = getValue key
+        with get (key: 'Key) =
+            if typeof<'Key>.IsValueType then
+                getStructValue key
+            else
+                getRefValue key

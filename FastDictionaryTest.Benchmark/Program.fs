@@ -45,6 +45,11 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
+    | "fasttypebranch" ->
+        let b = CacheEquality()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
     | "embeddedhead" ->
         let b = EmbeddedHead()
         for i in 1 .. loopCount do
@@ -117,6 +122,10 @@ let main argv =
 
         | "cacheequality" ->
             let _ = BenchmarkRunner.Run<CacheEquality>()
+            ()
+
+        | "fasttypebranch" ->
+            let _ = BenchmarkRunner.Run<FastTypeBranch>()
             ()
 
         | "embeddedhead" ->

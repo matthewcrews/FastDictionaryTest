@@ -13,6 +13,7 @@
         <Compile Include="ZeroAllocation.fs" />
         <Compile Include="FibonacciHashing.fs" />
         <Compile Include="CacheEquality.fs" />
+        <Compile Include="FastTypeBranch.fs" />
         <Compile Include="EmbeddedHead.fs" />
         <Compile Include="LinearProbing.fs" />
         <Compile Include="RobinHood.fs" />

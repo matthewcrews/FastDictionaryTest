@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.CacheEquality
+﻿namespace FastDictionaryTest.FastTypeBranch
 
 open System
 open System.Numerics
@@ -69,41 +69,40 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         int (hashProduct >>> bucketBitShift)
 
 
-    let getValue (key: 'Key) =
+    let getStructValue (key: 'Key) =
+        let hashCode = EqualityComparer.Default.GetHashCode key
 
-        if typeof<'Key>.IsValueType then
-            let hashCode = EqualityComparer.Default.GetHashCode key
+        let rec loop (entry: Entry<_,_> list) =
+            match entry with
+            | [] ->
+                raise (KeyNotFoundException())
+            | head::tail ->
+                if head.HashCode = hashCode && EqualityComparer.Default.Equals (head.Key, key) then
+                    head.Value
+                else
+                    loop tail
 
-            let rec loop (entry: Entry<_,_> list) =
-                match entry with
-                | [] ->
-                    raise (KeyNotFoundException())
-                | head::tail ->
-                    if head.HashCode = hashCode && EqualityComparer.Default.Equals (head.Key, key) then
-                        head.Value
-                    else
-                        loop tail
+        let bucketIdx = computeBucketIndex hashCode
+        let bucket = buckets[bucketIdx]
+        loop bucket
 
-            let bucketIdx = computeBucketIndex hashCode
-            let bucket = buckets[bucketIdx]
-            loop bucket
 
-        else
-            let hashCode = refComparer.GetHashCode key
+    let getRefValue (key: 'Key) =
+        let hashCode = refComparer.GetHashCode key
 
-            let rec loop (entry: Entry<_,_> list) =
-                match entry with
-                | [] ->
-                    raise (KeyNotFoundException())
-                | head::tail ->
-                    if head.HashCode = hashCode && refComparer.Equals (head.Key, key) then
-                        head.Value
-                    else
-                        loop tail
+        let rec loop (entry: Entry<_,_> list) =
+            match entry with
+            | [] ->
+                raise (KeyNotFoundException())
+            | head::tail ->
+                if head.HashCode = hashCode && refComparer.Equals (head.Key, key) then
+                    head.Value
+                else
+                    loop tail
 
-            let bucketIdx = computeBucketIndex hashCode
-            let bucket = buckets[bucketIdx]
-            loop bucket
+        let bucketIdx = computeBucketIndex hashCode
+        let bucket = buckets[bucketIdx]
+        loop bucket
 
 
     let addEntry (key: 'Key) (value: 'Value) =
@@ -181,4 +180,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     new () = Dictionary([])
 
     member d.Item
-        with get (key: 'Key) = getValue key
+        with get (key: 'Key) =
+            if typeof<'Key>.IsValueType then
+                getStructValue key
+            else
+                getRefValue key

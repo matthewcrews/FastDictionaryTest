@@ -26,7 +26,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         bucketIdx
 
 
-    let rec getValue (key: 'Key) =
+    let getValue (key: 'Key) =
 
         let rec loop (entry: Entry<_,_> list) =
             match entry with

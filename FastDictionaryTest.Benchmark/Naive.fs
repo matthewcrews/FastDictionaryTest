@@ -16,7 +16,7 @@ type Naive () =
     let dictionaries =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
-                dataSets[int countKey][testKey]
+                intDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
             |]
@@ -25,7 +25,7 @@ type Naive () =
     let testDictionaries =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
-                dataSets[int countKey][testKey]
+                intDataSets[int countKey][testKey]
                 |> Naive.Dictionary
             |]
         |]
@@ -46,7 +46,7 @@ type Naive () =
 
         let mutable acc = 0
         let dataSet = testDataSets[int b.KeyCount]
-        let keySet = keySets[int b.KeyCount]
+        let keySet = intKeySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
             let data = dataSet[testKey]
@@ -63,7 +63,7 @@ type Naive () =
 
         let mutable acc = 0
         let dataSet = testDataSets[int b.KeyCount]
-        let keySet = keySets[int b.KeyCount]
+        let keySet = intKeySets[int b.KeyCount]
 
         for testKey in 0 .. testCount - 1 do
             let data = dataSet[testKey]

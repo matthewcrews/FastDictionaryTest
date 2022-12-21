@@ -27,7 +27,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         bucketIdx
 
 
-    let rec getValue (key: 'Key) =
+    let getValue (key: 'Key) =
         let bucketIdx = computeBucketIndex key
         buckets[bucketIdx]
         |> List.find (fun entry -> entry.Key = key)
