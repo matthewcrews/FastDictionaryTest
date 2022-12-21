@@ -55,11 +55,6 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
-    | "cachehashcode" ->
-        let b = CacheHashCode()
-        for i in 1 .. loopCount do
-            result <- b.Test()
-
     | "robinhood" ->
         let b = RobinHood()
         for i in 1 .. loopCount do
@@ -75,18 +70,14 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
-    | "byteliststringcomparer" ->
-        let b = ByteListStringComparer()
+
+    | "bytelistrobinhood" ->
+        let b = ByteListRobinHood()
         for i in 1 .. loopCount do
             result <- b.Test()
 
-    | "byteliststringcomparerrobinhood" ->
-        let b = ByteListStringComparerRobinHood()
-        for i in 1 .. loopCount do
-            result <- b.Test()
-
-    | "byteliststringcomparerrobinhoodvec128" ->
-        let b = ByteListStringComparerRobinHoodVec128()
+    | "bytelistrobinhoodvec128" ->
+        let b = ByteListRobinHoodVec128()
         for i in 1 .. loopCount do
             result <- b.Test()
 
@@ -136,10 +127,6 @@ let main argv =
             let _ = BenchmarkRunner.Run<LinearProbing>()
             ()
 
-        | "cachehashcode" ->
-            let _ = BenchmarkRunner.Run<CacheHashCode>()
-            ()
-
         | "robinhood" ->
             let _ = BenchmarkRunner.Run<RobinHood>()
             ()
@@ -152,16 +139,12 @@ let main argv =
             let _ = BenchmarkRunner.Run<ByteList>()
             ()
 
-        | "byteliststringcomparer" ->
-            let _ = BenchmarkRunner.Run<ByteListStringComparer>()
+        | "bytelistrobinhood" ->
+            let _ = BenchmarkRunner.Run<ByteListRobinHood>()
             ()
 
-        | "byteliststringcomparerrobinhood" ->
-            let _ = BenchmarkRunner.Run<ByteListStringComparerRobinHood>()
-            ()
-
-        | "byteliststringcomparerrobinhoodvec128" ->
-            let _ = BenchmarkRunner.Run<ByteListStringComparerRobinHoodVec128>()
+        | "bytelistrobinhoodvec128" ->
+            let _ = BenchmarkRunner.Run<ByteListRobinHoodVec128>()
             ()
 
         | unknownSuite ->

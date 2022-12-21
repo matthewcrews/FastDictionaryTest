@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.ByteListStringComparerRobinHoodVec128
+﻿namespace FastDictionaryTest.ByteListRobinHoodVec128
 
 open System
 open System.Numerics

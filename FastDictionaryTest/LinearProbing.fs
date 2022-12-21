@@ -1,8 +1,19 @@
 ﻿namespace FastDictionaryTest.LinearProbing
 
+open System
+open System.Numerics
+open Microsoft.FSharp.NativeInterop
 open System.Collections.Generic
 
+#nowarn "9" "42" "51"
+
+
 module private Helpers =
+
+    let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
+
+    [<Literal>]
+    let POSITIVE_INT_MASK = 0x7FFF_FFFF
 
     [<RequireQualifiedAccess>]
     module HashCode =
@@ -31,13 +42,43 @@ module private Helpers =
                 Value = Unchecked.defaultof<'Value>
             }
 
+    let stringComparer =
+        { new IEqualityComparer<string> with
+            member _.Equals (a: string, b: string) =
+                String.Equals (a, b)
+
+            member _.GetHashCode (a: string) =
+                let charSpan = MemoryExtensions.AsSpan a
+                let mutable hash1 = (5381u <<< 16) + 5381u
+                let mutable hash2 = hash1
+                let mutable length = a.Length
+                let mutable ptr : nativeptr<uint32> =
+                    &&charSpan.GetPinnableReference()
+                    |> retype
+                while length > 2 do
+                    length <- length - 4
+                    hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr 0)
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 1)
+                    ptr <- NativePtr.add ptr 2
+
+                if length > 0 then
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 0)
+
+                int (hash1 + (hash2 * 1566083941u))
+        }
+
 open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
-    #if DEBUG
-    let logFile = "logs.txt"
-    #endif
+    // If the type of 'Key is a ref type, we will want to cache the EqualityComparer
+    let refComparer =
+        if typeof<'Key>.IsValueType then
+            Unchecked.defaultof<_>
+        elif typeof<'Key> = typeof<string> then
+            stringComparer :?> IEqualityComparer<'Key>
+        else
+            EqualityComparer<'Key>.Default :> IEqualityComparer<'Key>
 
     // Track the number of items in Dictionary for resize
     let mutable count = 0
@@ -46,51 +87,84 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // BitShift necessary for mapping HashCode to BucketIdx using Fibonacci Hashing
     let mutable bucketBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
 
-    // This relies on the number of buckets being a power of 2
-    let computeHashCode (key: 'Key) =
-        // Ensure the HashCode is positive
-        (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
-
     let computeBucketIndex (hashCode: int) =
         let hashProduct = uint hashCode * 2654435769u
         int (hashProduct >>> bucketBitShift)
 
 
-    let addEntry (key: 'Key) (value: 'Value) =
+    // This relies on the number of buckets being a power of 2
+    let computeHashCode (key: 'Key) =
+        if typeof<'Key>.IsValueType then
+            EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
+        else
+            refComparer.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (hashCode: int) (bucketIdx: int) =
-            if bucketIdx < buckets.Length then
-                let bucket = &buckets[bucketIdx]
-                // Check if bucket is Empty or a Tombstone
-                if bucket.IsAvailable then
-                    bucket.HashCode <- hashCode
-                    bucket.Key <- key
-                    bucket.Value <- value
-                    count <- count + 1
-                else
-                    // If we reach here, we know the bucket is occupied
-                    if EqualityComparer.Default.Equals (hashCode, bucket.HashCode) &&
-                       EqualityComparer.Default.Equals (key, bucket.Key) then
-                        bucket.Value <- value
-                    else
-                        loop hashCode (bucketIdx + 1)
-            else
-                // Start over looking from the beginning of the buckets
-                loop hashCode 0
+
+    let addEntry (key: 'Key) (value: 'Value) =
 
         let hashCode = computeHashCode key
         let bucketIdx = computeBucketIndex hashCode
-        loop hashCode bucketIdx
+
+        if typeof<'Key>.IsValueType then
+
+            let rec loop (hashCode: int) (bucketIdx: int) =
+                if bucketIdx < buckets.Length then
+                    let bucket = &buckets[bucketIdx]
+                    // Check if bucket is Empty or a Tombstone
+                    if bucket.IsAvailable then
+                        bucket.HashCode <- hashCode
+                        bucket.Key <- key
+                        bucket.Value <- value
+                        count <- count + 1
+                    else
+                        // If we reach here, we know the bucket is occupied
+                        if hashCode = bucket.HashCode &&
+                           EqualityComparer.Default.Equals (key, bucket.Key) then
+                            bucket.Value <- value
+                        else
+                            loop hashCode (bucketIdx + 1)
+                else
+                    // Start over looking from the beginning of the buckets
+                    loop hashCode 0
+
+            loop hashCode bucketIdx
+
+        else
+
+            let rec loop (hashCode: int) (bucketIdx: int) =
+                if bucketIdx < buckets.Length then
+                    let bucket = &buckets[bucketIdx]
+                    // Check if bucket is Empty or a Tombstone
+                    if bucket.IsAvailable then
+                        bucket.HashCode <- hashCode
+                        bucket.Key <- key
+                        bucket.Value <- value
+                        count <- count + 1
+                    else
+                        // If we reach here, we know the bucket is occupied
+                        if hashCode = bucket.HashCode &&
+                           refComparer.Equals (key, bucket.Key) then
+                            bucket.Value <- value
+                        else
+                            loop hashCode (bucketIdx + 1)
+                else
+                    // Start over looking from the beginning of the buckets
+                    loop hashCode 0
+
+            loop hashCode bucketIdx
 
 
     let getValue (key: 'Key) =
         let hashCode = computeHashCode key
+        let bucketIdx = computeBucketIndex hashCode
 
-        let rec loop (bucketIdx: int) =
-            if bucketIdx < buckets.Length then
-                if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) then
-                    if EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
-                        buckets[bucketIdx].Value
+        if typeof<'Key>.IsValueType then
+
+            let rec loop (bucketIdx: int) =
+                if bucketIdx < buckets.Length then
+                    if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
+                       EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
+                            buckets[bucketIdx].Value
 
                     elif buckets[bucketIdx].IsOccupied then
                         loop (bucketIdx + 1)
@@ -98,16 +172,31 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     else
                         raise (KeyNotFoundException())
 
-                elif buckets[bucketIdx].IsOccupied then
-                    loop (bucketIdx + 1)
+                else
+                    // Loop around to the begging of the array
+                    loop 0
+
+            loop bucketIdx
+
+        else
+
+            let rec loop (bucketIdx: int) =
+                if bucketIdx < buckets.Length then
+                    if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
+                       refComparer.Equals (key, buckets[bucketIdx].Key) then
+                            buckets[bucketIdx].Value
+
+                    elif buckets[bucketIdx].IsOccupied then
+                        loop (bucketIdx + 1)
+
+                    else
+                        raise (KeyNotFoundException())
 
                 else
-                    raise (KeyNotFoundException())
-            else
-                loop 0
+                    // Loop around to the begging of the array
+                    loop 0
 
-        let bucketIdx = computeBucketIndex hashCode
-        loop bucketIdx
+            loop bucketIdx
 
 
     let resize () =
@@ -118,7 +207,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             // Increase the size of the backing store
             buckets <- Array.create (buckets.Length <<< 1) Bucket.empty
-            bucketBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
+            bucketBitShift <- 64 - (BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
 
             for bucket in oldBuckets do

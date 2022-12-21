@@ -11,7 +11,7 @@ open FastDictionaryTest.Benchmark.Domain
 [<HardwareCounters(HardwareCounter.CacheMisses,
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
-type ByteListStringComparerRobinHoodVec128 () =
+type ByteListRobinHoodVec128 () =
 
     let dictionaries =
         [| for countKey, _ in valueCounts ->
@@ -26,7 +26,7 @@ type ByteListStringComparerRobinHoodVec128 () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 dataSets[int countKey][testKey]
-                |> ByteListStringComparerRobinHoodVec128.Dictionary
+                |> ByteListRobinHoodVec128.Dictionary
             |]
         |]
 

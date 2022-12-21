@@ -18,9 +18,8 @@
         <Compile Include="RobinHood.fs" />
         <Compile Include="RobinHoodEviction.fs" />
         <Compile Include="ByteList.fs" />
-        <Compile Include="ByteListStringComparer.fs" />
-        <Compile Include="ByteListStringComparerRobinHood.fs" />
-        <Compile Include="ByteListStringComparerRobinHoodVec128.fs" />
+        <Compile Include="ByteListRobinHood.fs" />
+        <Compile Include="ByteListRobinHoodVec128.fs" />
         <!--        <Compile Include="Benchmarks.fs" />-->
         <Compile Include="Program.fs" />
     </ItemGroup>
