@@ -83,23 +83,6 @@ module private Helpers =
 open Helpers
 
 
-[<Struct>]
-[<StructLayout(LayoutKind.Sequential, Size = 0x100)>]
-[<UnsafeValueType>]     // Comment this out for more speed, less safety
-type FixedBufferInternal =
-    val mutable FixedElementField : char
-
-[<Struct>]
-type MyBuffer =
-    [<FixedBuffer(typeof<char>, 0x80)>]
-    val mutable fixedBuffer : FixedBufferInternal
-
-type MyClass () =
-    // This is the "fixed length array"
-    [<DefaultValue>]
-    val mutable myBuffer : MyBuffer
-
-
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
     // If the type of 'Key is a ref type, we will want to cache the EqualityComparer
     let refComparer =
@@ -236,9 +219,11 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
 
     let getValue (key: 'Key) =
-        if typeof<'Key>.IsValueType then
 
-            let hashCode = (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
+        let hashCode = computeHashCode key
+        let bucketIdx = computeBucketIndex hashCode
+
+        if typeof<'Key>.IsValueType then
 
             let rec loop (bucketIdx: int) =
                 let bucket = buckets[bucketIdx]
@@ -259,8 +244,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         else
 
-            let hashCode = (refComparer.GetHashCode key) &&& 0x7FFF_FFFF
-
             let rec loop (bucketIdx: int) =
                 let bucket = buckets[bucketIdx]
 
@@ -275,7 +258,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
                     loop nextBucketIdx
 
-            let bucketIdx = computeBucketIndex hashCode
             loop bucketIdx
 
     // Increase the size of the backing array if the max fill percent has been reached

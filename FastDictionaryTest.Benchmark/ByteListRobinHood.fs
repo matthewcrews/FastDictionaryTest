@@ -57,7 +57,7 @@ type ByteListRobinHood () =
 
         acc
 
-    [<Benchmark(Description = "ByteList + StringComparer + RobinHood")>]
+    [<Benchmark(Description = "ByteList + RobinHood")>]
     member b.Test () =
         let testDataSets = testDictionaries
 
