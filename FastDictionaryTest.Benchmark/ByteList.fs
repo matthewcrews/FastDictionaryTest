@@ -57,7 +57,7 @@ type ByteList () =
 
         acc
 
-    [<Benchmark(Description = "Byte List (BL)")>]
+    [<Benchmark(Description = "ByteList")>]
     member b.Test () =
         let testDataSets = testDictionaries
 

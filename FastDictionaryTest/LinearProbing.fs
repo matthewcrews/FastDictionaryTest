@@ -4,32 +4,29 @@ open System.Collections.Generic
 
 module private Helpers =
 
-    [<Struct>]
-    type Status =
-        {
-            Value : sbyte
-        }
-        member s.IsTombstone = s.Value = -1y
-        member s.IsEmpty = s.Value = 0y
-        member s.IsOccupied = s.Value = 1y
-        member s.IsAvailable = s.Value <= 0y
-        static member empty = { Value = 0y }
-        static member occupied = { Value = 1y }
-        static member tombstone = { Value = -1y }
+    [<RequireQualifiedAccess>]
+    module HashCode =
+        let empty = -2
+        let tombstone = -1
 
     [<Struct>]
     type Bucket<'Key, 'Value> =
         {
-            mutable Status : Status
+            mutable HashCode : int
             mutable Key : 'Key
             mutable Value : 'Value
         }
+        member s.IsTombstone = s.HashCode = HashCode.tombstone
+        member s.IsEmpty = s.HashCode = HashCode.empty
+        member s.IsEntry = s.HashCode >= 0
+        member s.IsOccupied = s.HashCode >= -1
+        member s.IsAvailable = s.HashCode < 0
 
     module Bucket =
 
         let empty<'Key, 'Value> =
             {
-                Status = Status.empty
+                HashCode = -1
                 Key = Unchecked.defaultof<'Key>
                 Value = Unchecked.defaultof<'Value>
             }
@@ -38,6 +35,10 @@ open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
+    #if DEBUG
+    let logFile = "logs.txt"
+    #endif
+
     // Track the number of items in Dictionary for resize
     let mutable count = 0
     // Create the Buckets with some initial capacity
@@ -46,54 +47,66 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let mutable bucketBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
 
     // This relies on the number of buckets being a power of 2
-    let computeBucketIndex (key: 'Key) =
-        let h = EqualityComparer<'Key>.Default.GetHashCode key
-        let hashProduct = uint h * 2654435769u
+    let computeHashCode (key: 'Key) =
+        // Ensure the HashCode is positive
+        (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
+
+    let computeBucketIndex (hashCode: int) =
+        let hashProduct = uint hashCode * 2654435769u
         int (hashProduct >>> bucketBitShift)
 
 
     let addEntry (key: 'Key) (value: 'Value) =
 
-        let rec loop (bucketIdx: int) =
+        let rec loop (hashCode: int) (bucketIdx: int) =
             if bucketIdx < buckets.Length then
                 let bucket = &buckets[bucketIdx]
                 // Check if bucket is Empty or a Tombstone
-                if bucket.Status.IsAvailable then
-                    bucket.Status <- Status.occupied
+                if bucket.IsAvailable then
+                    bucket.HashCode <- hashCode
                     bucket.Key <- key
                     bucket.Value <- value
                     count <- count + 1
                 else
                     // If we reach here, we know the bucket is occupied
-                    if EqualityComparer.Default.Equals (key, bucket.Key) then
+                    if EqualityComparer.Default.Equals (hashCode, bucket.HashCode) &&
+                       EqualityComparer.Default.Equals (key, bucket.Key) then
                         bucket.Value <- value
                     else
-                        loop (bucketIdx + 1)
+                        loop hashCode (bucketIdx + 1)
             else
                 // Start over looking from the beginning of the buckets
-                loop 0
+                loop hashCode 0
 
-        let bucketIdx = computeBucketIndex key
-        loop bucketIdx
+        let hashCode = computeHashCode key
+        let bucketIdx = computeBucketIndex hashCode
+        loop hashCode bucketIdx
+
 
     let getValue (key: 'Key) =
+        let hashCode = computeHashCode key
 
         let rec loop (bucketIdx: int) =
             if bucketIdx < buckets.Length then
-                let bucket = &buckets[bucketIdx]
-                if bucket.Status.IsOccupied then
-                    if EqualityComparer.Default.Equals (key, bucket.Key) then
-                        bucket.Value
-                    else
+                if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) then
+                    if EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
+                        buckets[bucketIdx].Value
+
+                    elif buckets[bucketIdx].IsOccupied then
                         loop (bucketIdx + 1)
-                elif bucket.Status.IsTombstone then
+
+                    else
+                        raise (KeyNotFoundException())
+
+                elif buckets[bucketIdx].IsOccupied then
                     loop (bucketIdx + 1)
+
                 else
                     raise (KeyNotFoundException())
             else
                 loop 0
 
-        let bucketIdx = computeBucketIndex key
+        let bucketIdx = computeBucketIndex hashCode
         loop bucketIdx
 
 
@@ -109,7 +122,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             count <- 0
 
             for bucket in oldBuckets do
-                if bucket.Status.IsOccupied then
+                if bucket.IsEntry then
                     addEntry bucket.Key bucket.Value
 
     do

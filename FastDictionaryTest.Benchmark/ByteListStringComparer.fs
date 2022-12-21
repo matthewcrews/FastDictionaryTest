@@ -57,7 +57,7 @@ type ByteListStringComparer () =
 
         acc
 
-    [<Benchmark(Description = "BL + StringComparer (SC)")>]
+    [<Benchmark(Description = "ByteList+StringComparer")>]
     member b.Test () =
         let testDataSets = testDictionaries
 

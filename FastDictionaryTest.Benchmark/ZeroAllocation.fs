@@ -11,7 +11,7 @@ open FastDictionaryTest.Benchmark.Domain
 [<HardwareCounters(HardwareCounter.CacheMisses,
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
-type ArrayBuckets () =
+type ZeroAllocation () =
 
     let dictionaries =
         [| for countKey, _ in valueCounts ->
@@ -26,15 +26,15 @@ type ArrayBuckets () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 dataSets[int countKey][testKey]
-                |> ArrayBuckets.Dictionary
+                |> ZeroAllocation.Dictionary
             |]
         |]
 
 
     [<Params(
           KeyCount.``10``
-          , KeyCount.``100``
-          , KeyCount.``1_000``
+          // , KeyCount.``100``
+          // , KeyCount.``1_000``
           , KeyCount.``10_000``
         )>]
     member val KeyCount = KeyCount.``10`` with get, set
@@ -57,7 +57,7 @@ type ArrayBuckets () =
 
         acc
 
-    [<Benchmark(Description = "Array Buckets")>]
+    [<Benchmark(Description = "Zero Allocation")>]
     member b.Test () =
         let testDataSets = testDictionaries
 

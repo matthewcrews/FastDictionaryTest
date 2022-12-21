@@ -57,14 +57,14 @@ module private Helpers =
 
             member _.GetHashCode (a: string) =
                 let charSpan = MemoryExtensions.AsSpan a
-                let mutable hash1 = (5381UL <<< 16) + 5381UL
+                let mutable hash1 = (5381u <<< 16) + 5381u
                 let mutable hash2 = hash1
                 let mutable length = a.Length
-                let mutable ptr : nativeptr<uint64> =
+                let mutable ptr : nativeptr<uint32> =
                     &&charSpan.GetPinnableReference()
                     |> retype
-                while length > 6 do
-                    length <- length - 8
+                while length > 2 do
+                    length <- length - 4
                     hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr 0)
                     hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 1)
                     ptr <- NativePtr.add ptr 2
@@ -72,7 +72,7 @@ module private Helpers =
                 if length > 0 then
                     hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 0)
 
-                int (hash1 + (hash2 * 1566083941UL))
+                int (hash1 + (hash2 * 1566083941u))
         }
 
 open Helpers

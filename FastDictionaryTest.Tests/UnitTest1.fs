@@ -8,9 +8,9 @@ let Setup () =
     ()
 
 let rng = System.Random 123
-let minKey = 0
+let minKey = -1_000
 let maxKey = 1_000
-let maxValue = 1_000_000
+let maxValue = 1_000
 
 type Value =
     {
@@ -41,17 +41,7 @@ let ``Naive Dictionary matches`` () =
 [<Test>]
 let ``ZeroAlloc Dictionary matches`` () =
 
-    let testDictionary = ZeroAlloc.Dictionary data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
-
-
-[<Test>]
-let ``Array Dictionary matches`` () =
-
-    let testDictionary = ArrayBuckets.Dictionary data
+    let testDictionary = ZeroAllocation.Dictionary data
 
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]

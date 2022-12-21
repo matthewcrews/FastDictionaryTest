@@ -33,9 +33,9 @@ type FibonacciHashing () =
 
     [<Params(
           KeyCount.``10``
-          , KeyCount.``100``
+          // , KeyCount.``100``
           , KeyCount.``1_000``
-          , KeyCount.``10_000``
+          // , KeyCount.``10_000``
         )>]
     member val KeyCount = KeyCount.``10`` with get, set
 

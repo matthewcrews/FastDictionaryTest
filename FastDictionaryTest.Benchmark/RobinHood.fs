@@ -57,7 +57,7 @@ type RobinHood () =
 
         acc
 
-    [<Benchmark(Description = "LP + Robin Hood (RH)")>]
+    [<Benchmark(Description = "Linear Probing + Robin Hood")>]
     member b.Test () =
         let testDataSets = testDictionaries
 

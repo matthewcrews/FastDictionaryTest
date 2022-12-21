@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.FibonacciHashing
+﻿namespace FastDictionaryTest.ZeroAllocation
 
 open System.Collections.Generic
 
@@ -18,14 +18,12 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let mutable count = 0
     // Create the Buckets with some initial capacity
     let mutable buckets : list<Entry<'Key, 'Value>>[] = Array.create 4 []
-    // BitShift necessary for mapping HashCode to SlotIdx using Fibonacci Hashing
-    let mutable slotBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
-
-    // This relies on the size of buckets being a power of 2
+    // Map a 'Key to the bucket we expect it to be in
     let computeBucketIndex (key: 'Key) =
-        let h = (EqualityComparer.Default.GetHashCode key)
-        let hashProduct = (uint h) * 2654435769u
-        int (hashProduct >>> slotBitShift)
+        // Mask off top bit to ensure positive integer
+        let h = (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
+        let bucketIdx = h % buckets.Length
+        bucketIdx
 
 
     let rec getValue (key: 'Key) =
@@ -45,6 +43,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
 
     let addEntry (key: 'Key) (value: 'Value) =
+        let bucketIdx = computeBucketIndex key
+        let bucket = buckets[bucketIdx]
 
         let rec loop (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
             match remaining with
@@ -62,8 +62,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 else
                     loop (head::acc) tail
 
-        let bucketIdx = computeBucketIndex key
-        let bucket = buckets[bucketIdx]
         let updatedBucket = loop [] bucket
         buckets[bucketIdx] <- updatedBucket
 
@@ -75,7 +73,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             // Increase the size of the backing store
             buckets <- Array.create (buckets.Length <<< 1) []
-            slotBitShift <- 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
 
             for bucket in oldBuckets do

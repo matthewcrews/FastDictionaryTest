@@ -30,18 +30,18 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
+    | "zeroalloc" ->
+        let b = ZeroAllocation()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
     | "fibonaccihashing" ->
         let b = FibonacciHashing()
         for i in 1 .. loopCount do
             result <- b.Test()
 
-    | "zeroalloc" ->
-        let b = ZeroAlloc()
-        for i in 1 .. loopCount do
-            result <- b.Test()
-
-    | "arraybuckets" ->
-        let b = ArrayBuckets()
+    | "cacheequality" ->
+        let b = CacheEquality()
         for i in 1 .. loopCount do
             result <- b.Test()
 
@@ -116,16 +116,16 @@ let main argv =
             let _ = BenchmarkRunner.Run<Naive>()
             ()
 
+        | "zeroallocation" ->
+            let _ = BenchmarkRunner.Run<ZeroAllocation>()
+            ()
+
         | "fibonaccihashing" ->
             let _ = BenchmarkRunner.Run<FibonacciHashing>()
             ()
 
-        | "zeroalloc" ->
-            let _ = BenchmarkRunner.Run<ZeroAlloc>()
-            ()
-
-        | "arraybuckets" ->
-            let _ = BenchmarkRunner.Run<ArrayBuckets>()
+        | "cacheequality" ->
+            let _ = BenchmarkRunner.Run<CacheEquality>()
             ()
 
         | "embeddedhead" ->

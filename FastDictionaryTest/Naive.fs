@@ -16,62 +16,43 @@ open Helpers
 
 
 type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>) =
-
     // Track the number of items in Dictionary for resize
     let mutable count = 0
-
     // Create the Buckets with some initial capacity
     let mutable buckets : list<Entry<'Key, 'Value>>[] = Array.create 4 []
-
-    let computeBucketIndex (k: 'Key) =
-        let h = -1 * hash k
+    // Map a 'Key to the bucket we expect it to be in
+    let computeBucketIndex (key: 'Key) =
+        let h = (hash key) &&& 0x7FFF_FFFF
         let bucketIdx = h % buckets.Length
         bucketIdx
 
-    let getIndexForEntry (key: 'Key) (bucket: list<Entry<_,_>>) =
-        let rec loop index key bucket =
-            match bucket with
-            | [] -> -1
-            | head::tail ->
-                if head.Key = key then
-                    index
-                else
-                    loop (index + 1) key tail
 
-        loop 0 key bucket
-
-
-    let rec getEntryForKey (key: 'Key) (bucket: list<Entry<_,_>>) =
-        match bucket with
-        | [] ->
-            raise (KeyNotFoundException())
-        | head::tail ->
-            if head.Key = key then
-                head
-            else
-                getEntryForKey key tail
+    let rec getValue (key: 'Key) =
+        let bucketIdx = computeBucketIndex key
+        buckets[bucketIdx]
+        |> List.find (fun entry -> entry.Key = key)
+        |> fun entry -> entry.Value
 
 
     let addEntry (key: 'Key) (value: 'Value) =
         let bucketIdx = computeBucketIndex key
         let bucket = buckets[bucketIdx]
-        // See if there is already an Entry for the Key in the bucket
-        let indexForEntry = getIndexForEntry key bucket
 
-        // If the index is non-negative, then the Key exists in the bucket
-        if indexForEntry >= 0 then
-            // In this case, the count of the Dictionary will not increase
-            let newEntry = { Key = key; Value = value }
-            let newBucket = List.updateAt indexForEntry newEntry bucket
-            buckets[bucketIdx] <- newBucket
+        let rec loop (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
+            match remaining with
+            | [] ->
+                let newEntry = { Key = key; Value = value }
+                count <- count + 1
+                newEntry :: acc
+            | head::tail ->
+                if head.Key = key then
+                    let updatedEntry = { head with Value = value }
+                    (updatedEntry::acc) @ tail
+                else
+                    loop (head::acc) tail
 
-        else
-            // In this case, the count of the Dictionary will increase and we
-            // may need to resize. We add the entry and resize if necessary
-            let newEntry = { Key = key; Value = value }
-            let newBucket = newEntry :: bucket
-            buckets[bucketIdx] <- newBucket
-            count <- count + 1
+        let updatedBucket = loop [] bucket
+        buckets[bucketIdx] <- updatedBucket
 
 
     let resize () =
@@ -90,12 +71,9 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     do
         for k, v in entries do
             addEntry k v
+            resize()
 
     new () = Dictionary([])
 
     member d.Item
-        with get (key: 'Key) =
-            let bucketIdx = computeBucketIndex key
-            let bucket = buckets[bucketIdx]
-            let entry = getEntryForKey key bucket
-            entry.Value
+        with get (key: 'Key) = getValue key

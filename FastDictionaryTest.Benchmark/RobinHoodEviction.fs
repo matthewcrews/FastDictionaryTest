@@ -57,7 +57,7 @@ type RobinHoodEviction () =
 
         acc
 
-    [<Benchmark(Description = "LP + RH + Eviction")>]
+    [<Benchmark(Description = "LinearProbing + RobinHood + Eviction")>]
     member b.Test () =
         let testDataSets = testDictionaries
 

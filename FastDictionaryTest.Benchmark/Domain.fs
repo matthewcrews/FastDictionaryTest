@@ -11,6 +11,7 @@ type StructKey =
 type RefKey =
     {
         Value : int
+        StrValue : string
     }
 
 type KeyCount =
@@ -43,7 +44,7 @@ let minKey = 0
 let maxKey = 100_000
 let maxValue = 1_000
 let lookupCount = 100
-let testCount = 100
+let testCount = 10
 
 let dataSets =
     [| for _, count in valueCounts ->
@@ -53,10 +54,10 @@ let dataSets =
              while d.Count < count do
                  // Make the range of keys brutal for a naive Hashing function for mapping
                  // keys to slots
-                 let k = rng.Next (minKey, maxKey)
+                 // let k = rng.Next (minKey, maxKey)
                  // let k = ((rng.Next (minKey, maxKey)) <<< 16)
                  // let k : StructKey = { Value = ((rng.Next (minKey, maxKey)) <<< 16) }
-                 // let k : RefKey = { Value = ((rng.Next (minKey, maxKey)) <<< 16) }
+                 let k : RefKey = { Value = ((rng.Next (minKey, maxKey)) <<< 16); StrValue = string (rng.Next maxKey) }
                  // let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
                  let v = rng.Next maxValue
                  d[k] <- v
