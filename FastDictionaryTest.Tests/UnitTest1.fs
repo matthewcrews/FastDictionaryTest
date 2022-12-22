@@ -69,16 +69,6 @@ let ``LinearProbing Dictionary matches`` () =
 
 
 [<Test>]
-let ``CacheHashCode Dictionary matches`` () =
-
-    let testDictionary = CacheHashCode.Dictionary data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
-
-
-[<Test>]
 let ``RobinHood Dictionary matches`` () =
 
     let testDictionary = RobinHood.Dictionary data
@@ -109,19 +99,9 @@ let ``ByteList Dictionary matches`` () =
 
 
 [<Test>]
-let ``ByteListStringComparer Dictionary matches`` () =
+let ``ByteList RobinHood Dictionary matches`` () =
 
-    let testDictionary = ByteListStringComparer.Dictionary data
-
-    for KeyValue (k, expectedValue) in expectedValues do
-        let actualValue = testDictionary[k]
-        Assert.AreEqual (expectedValue, actualValue)
-
-
-[<Test>]
-let ``ByteListStringComparerRobinHood Dictionary matches`` () =
-
-    let testDictionary = ByteListStringComparerRobinHood.Dictionary data
+    let testDictionary = ByteListRobinHood.Dictionary data
 
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
@@ -129,9 +109,9 @@ let ``ByteListStringComparerRobinHood Dictionary matches`` () =
 
 
 [<Test>]
-let ``ByteListStringComparerVec128 Dictionary matches`` () =
+let ``ByteList RobinHood Vec128 Dictionary matches`` () =
 
-    let testDictionary = ByteListStringComparerRobinHoodVec128.Dictionary data
+    let testDictionary = ByteListRobinHoodVec128.Dictionary data
 
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
