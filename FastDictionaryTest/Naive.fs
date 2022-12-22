@@ -1,9 +1,6 @@
 ﻿[<RequireQualifiedAccess>]
 module FastDictionaryTest.Naive
 
-
-open System.Collections.Generic
-
 module private Helpers =
 
     type Entry<'Key, 'Value> =
@@ -35,8 +32,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
 
     let addEntry (key: 'Key) (value: 'Value) =
-        let bucketIdx = computeBucketIndex key
-        let bucket = buckets[bucketIdx]
 
         let rec loop (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
             match remaining with
@@ -51,6 +46,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 else
                     loop (head::acc) tail
 
+        let bucketIdx = computeBucketIndex key
+        let bucket = buckets[bucketIdx]
         let updatedBucket = loop [] bucket
         buckets[bucketIdx] <- updatedBucket
 
@@ -69,8 +66,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     addEntry entry.Key entry.Value
 
     do
-        for k, v in entries do
-            addEntry k v
+        for key, value in entries do
+            addEntry key value
             resize()
 
     new () = Dictionary([])

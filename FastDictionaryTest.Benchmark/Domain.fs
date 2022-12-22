@@ -2,18 +2,6 @@
 
 open System.Collections.Generic
 
-[<Struct>]
-type StructKey =
-    {
-        Value : int
-    }
-
-type RefKey =
-    {
-        Value : int
-        StrValue : string
-    }
-
 type KeyType =
     | Int = 0
     | String = 1
@@ -35,8 +23,8 @@ let rng = System.Random 123
 let minKey = 0
 let maxKey = 100_000
 let maxValue = 1_000
+let testCount = 100
 let lookupCount = 100
-let testCount = 10
 
 let intDataSets =
     [| for _, count in valueCounts ->
