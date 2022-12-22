@@ -91,7 +91,7 @@ type EmbeddedHead () =
             acc
 
 
-    [<Benchmark(Description = "Cache Equality")>]
+    [<Benchmark(Description = "Embedded Head")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then

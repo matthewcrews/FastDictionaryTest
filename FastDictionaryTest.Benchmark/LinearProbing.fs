@@ -91,7 +91,7 @@ type LinearProbing () =
             acc
 
 
-    [<Benchmark(Description = "Cache Equality")>]
+    [<Benchmark(Description = "LinearProbing")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then

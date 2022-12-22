@@ -91,7 +91,7 @@ type ByteListRobinHoodVec128 () =
             acc
 
 
-    [<Benchmark(Description = "Cache Equality")>]
+    [<Benchmark(Description = "ByteList RobinHood Eviction Vec128")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then

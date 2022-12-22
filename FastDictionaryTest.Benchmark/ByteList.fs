@@ -91,7 +91,7 @@ type ByteList () =
             acc
 
 
-    [<Benchmark(Description = "Cache Equality")>]
+    [<Benchmark(Description = "ByteList")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then

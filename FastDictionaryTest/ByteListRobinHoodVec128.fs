@@ -218,108 +218,90 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             listSearch hashCode bucketIdx
 
 
-    let structGetValue (key: 'Key) =
-        let hashCode = (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
+    let getStructValue (key: 'Key) =
+        let hashCode = (EqualityComparer.Default.GetHashCode key) &&& POSITIVE_INT_MASK
 
         let rec loop (bucketIdx: int) =
-            if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
-               EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
-                buckets[bucketIdx].Value
-            elif buckets[bucketIdx].IsLast then
+            let bucket = buckets[bucketIdx]
+
+            if hashCode = bucket.HashCode &&
+               EqualityComparer.Default.Equals (key, bucket.Key) then
+                bucket.Value
+
+            elif bucket.IsLast then
                 raise (KeyNotFoundException())
+
             else
-                let nextBucketIdx = (bucketIdx + (int buckets[bucketIdx].NextOffset)) &&& wrapAroundMask
+                let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
                 loop nextBucketIdx
 
         let bucketIdx = computeBucketIndex hashCode
-        loop bucketIdx
+        if bucketIdx < buckets.Length - 4 then
+            let hashCodeVec = Vector128.Create hashCode
+            let bucketsHashCodeVec = Vector128.Create (
+                buckets[bucketIdx].HashCode,
+                buckets[bucketIdx + 1].HashCode,
+                buckets[bucketIdx + 2].HashCode,
+                buckets[bucketIdx + 3].HashCode
+                )
 
+            let compareResult =
+                Avx2.CompareEqual (hashCodeVec, bucketsHashCodeVec)
+                |> retype<_, Vector128<float32>>
+            let moveMask = Sse2.MoveMask compareResult
+            let offset = BitOperations.TrailingZeroCount moveMask
 
-    let refGetValue (key: 'Key) =
-        let hashCode = (refComparer.GetHashCode key) &&& 0x7FFF_FFFF
-        let bucketIdx = computeBucketIndex hashCode
-
-        if typeof<'Key>.IsValueType then
-
-            let rec loop (bucketIdx: int) =
-                let bucket = buckets[bucketIdx]
-
-                if hashCode = bucket.HashCode &&
-                   EqualityComparer.Default.Equals (key, bucket.Key) then
-                    bucket.Value
-
-                elif bucket.IsLast then
-                    raise (KeyNotFoundException())
-
-                else
-                    let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
-                    loop nextBucketIdx
-
-
-            if bucketIdx < buckets.Length - 4 then
-                let hashCodeVec = Vector128.Create hashCode
-                let bucketsHashCodeVec = Vector128.Create (
-                    buckets[bucketIdx].HashCode,
-                    buckets[bucketIdx + 1].HashCode,
-                    buckets[bucketIdx + 2].HashCode,
-                    buckets[bucketIdx + 3].HashCode
-                    )
-
-                let compareResult =
-                    Avx2.CompareEqual (hashCodeVec, bucketsHashCodeVec)
-                    |> retype<_, Vector128<float32>>
-                let moveMask = Sse2.MoveMask compareResult
-                let offset = BitOperations.TrailingZeroCount moveMask
-
-                if offset <= 3 &&
-                   EqualityComparer.Default.Equals (key, buckets[bucketIdx + offset].Key) then
-                    buckets[bucketIdx + offset].Value
-                else
-                    loop bucketIdx
-
+            if offset <= 3 &&
+               EqualityComparer.Default.Equals (key, buckets[bucketIdx + offset].Key) then
+                buckets[bucketIdx + offset].Value
             else
                 loop bucketIdx
 
         else
+            loop bucketIdx
 
-            let rec loop (bucketIdx: int) =
-                let bucket = buckets[bucketIdx]
 
-                if hashCode = bucket.HashCode &&
-                   refComparer.Equals (key, bucket.Key) then
-                    bucket.Value
+    let getRefValue (key: 'Key) =
+        let hashCode = (refComparer.GetHashCode key) &&& POSITIVE_INT_MASK
 
-                elif bucket.IsLast then
-                    raise (KeyNotFoundException())
+        let rec loop (bucketIdx: int) =
+            let bucket = buckets[bucketIdx]
 
-                else
-                    let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
-                    loop nextBucketIdx
+            if hashCode = bucket.HashCode &&
+               refComparer.Equals (key, bucket.Key) then
+                bucket.Value
 
-            if bucketIdx < buckets.Length - 4 then
-                let hashCodeVec = Vector128.Create hashCode
-                let bucketsHashCodeVec = Vector128.Create (
-                    buckets[bucketIdx].HashCode,
-                    buckets[bucketIdx + 1].HashCode,
-                    buckets[bucketIdx + 2].HashCode,
-                    buckets[bucketIdx + 3].HashCode
-                    )
+            elif bucket.IsLast then
+                raise (KeyNotFoundException())
 
-                let compareResult =
-                    Avx2.CompareEqual (hashCodeVec, bucketsHashCodeVec)
-                    |> retype<_, Vector128<float32>>
-                let moveMask = Sse2.MoveMask compareResult
-                let offset = BitOperations.TrailingZeroCount moveMask
+            else
+                let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
+                loop nextBucketIdx
 
-                if offset <= 3 &&
-                   refComparer.Equals (key, buckets[bucketIdx + offset].Key) then
-                    buckets[bucketIdx + offset].Value
-                else
-                    loop bucketIdx
+        let bucketIdx = computeBucketIndex hashCode
+        if bucketIdx < buckets.Length - 4 then
+            let hashCodeVec = Vector128.Create hashCode
+            let bucketsHashCodeVec = Vector128.Create (
+                buckets[bucketIdx].HashCode,
+                buckets[bucketIdx + 1].HashCode,
+                buckets[bucketIdx + 2].HashCode,
+                buckets[bucketIdx + 3].HashCode
+                )
 
+            let compareResult =
+                Avx2.CompareEqual (hashCodeVec, bucketsHashCodeVec)
+                |> retype<_, Vector128<float32>>
+            let moveMask = Sse2.MoveMask compareResult
+            let offset = BitOperations.TrailingZeroCount moveMask
+
+            if offset <= 3 &&
+               refComparer.Equals (key, buckets[bucketIdx + offset].Key) then
+                buckets[bucketIdx + offset].Value
             else
                 loop bucketIdx
 
+        else
+            loop bucketIdx
 
 
     // Increase the size of the backing array if the max fill percent has been reached
@@ -355,6 +337,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     member d.Item
         with get (key: 'Key) =
             if typeof<'Key>.IsValueType then
-                structGetValue key
+                getStructValue key
             else
-                refGetValue key
+                getRefValue key

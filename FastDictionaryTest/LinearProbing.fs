@@ -92,17 +92,14 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         int (hashProduct >>> bucketBitShift)
 
 
-    // This relies on the number of buckets being a power of 2
-    let computeHashCode (key: 'Key) =
-        if typeof<'Key>.IsValueType then
-            EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
-        else
-            refComparer.GetHashCode key &&& POSITIVE_INT_MASK
-
-
     let addEntry (key: 'Key) (value: 'Value) =
 
-        let hashCode = computeHashCode key
+        let hashCode =
+            if typeof<'Key>.IsValueType then
+                EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
+            else
+                refComparer.GetHashCode key &&& POSITIVE_INT_MASK
+
         let bucketIdx = computeBucketIndex hashCode
 
         if typeof<'Key>.IsValueType then
@@ -154,49 +151,50 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             loop hashCode bucketIdx
 
 
-    let getValue (key: 'Key) =
-        let hashCode = computeHashCode key
+    let getStructValue (key: 'Key) =
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
+
+        let rec loop (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
+                   EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
+                        buckets[bucketIdx].Value
+
+                elif buckets[bucketIdx].IsOccupied then
+                    loop (bucketIdx + 1)
+
+                else
+                    raise (KeyNotFoundException())
+
+            else
+                // Loop around to the begging of the array
+                loop 0
+
         let bucketIdx = computeBucketIndex hashCode
+        loop bucketIdx
 
-        if typeof<'Key>.IsValueType then
 
-            let rec loop (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
-                       EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
-                            buckets[bucketIdx].Value
+    let getRefValue (key: 'Key) =
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
 
-                    elif buckets[bucketIdx].IsOccupied then
-                        loop (bucketIdx + 1)
+        let rec loop (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                if hashCode = buckets[bucketIdx].HashCode &&
+                   refComparer.Equals (key, buckets[bucketIdx].Key) then
+                        buckets[bucketIdx].Value
 
-                    else
-                        raise (KeyNotFoundException())
-
-                else
-                    // Loop around to the begging of the array
-                    loop 0
-
-            loop bucketIdx
-
-        else
-
-            let rec loop (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
-                       refComparer.Equals (key, buckets[bucketIdx].Key) then
-                            buckets[bucketIdx].Value
-
-                    elif buckets[bucketIdx].IsOccupied then
-                        loop (bucketIdx + 1)
-
-                    else
-                        raise (KeyNotFoundException())
+                elif buckets[bucketIdx].IsOccupied then
+                    loop (bucketIdx + 1)
 
                 else
-                    // Loop around to the begging of the array
-                    loop 0
+                    raise (KeyNotFoundException())
 
-            loop bucketIdx
+            else
+                // Loop around to the begging of the array
+                loop 0
+
+        let bucketIdx = computeBucketIndex hashCode
+        loop bucketIdx
 
 
     let resize () =
@@ -222,4 +220,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     new () = Dictionary<'Key, 'Value>([])
 
     member d.Item
-        with get (key: 'Key) = getValue key
+        with get (key: 'Key) =
+            if typeof<'Key>.IsValueType then
+                getStructValue key
+            else
+                getRefValue key

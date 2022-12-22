@@ -89,147 +89,140 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // BitShift necessary for mapping HashCode to BucketIdx using Fibonacci Hashing
     let mutable bucketBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
 
-    // This relies on the number of buckets being a power of 2
-    let computeHashCode (key: 'Key) =
-        if typeof<'Key>.IsValueType then
-            EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
-        else
-            refComparer.GetHashCode key &&& POSITIVE_INT_MASK
-
 
     let computeBucketIndex (hashCode: int) =
         let hashProduct = uint hashCode * 2654435769u
         int (hashProduct >>> bucketBitShift)
 
 
-    let rec addEntry (key: 'Key) (value: 'Value) =
+    let rec addStructEntry (key: 'Key) (value: 'Value) =
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let hashCode = computeHashCode key
-        let bucketIdx = computeBucketIndex hashCode
+        let rec loop (offset: int) (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                let bucket = &buckets[bucketIdx]
+                // Check if bucket is Empty or a Tombstone
+                if bucket.IsAvailable then
+                    bucket.Offset <- offset
+                    bucket.HashCode <- hashCode
+                    bucket.Key <- key
+                    bucket.Value <- value
+                    count <- count + 1
+                else
+                    // If we reach here, we know the bucket is occupied
+                    if hashCode = bucket.HashCode &&
+                       EqualityComparer.Default.Equals (key, bucket.Key) then
+                        bucket.Value <- value
 
-        if typeof<'Key>.IsValueType then
-
-            let rec loop (offset: int) (hashCode: int) (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    let bucket = &buckets[bucketIdx]
-                    // Check if bucket is Empty or a Tombstone
-                    if bucket.IsAvailable then
+                    // If this new value is farther from it's Home than the current entry
+                    // take the entry for the new value and re-insert the prev entry
+                    elif bucket.Offset < offset then
+                        let prevKey = bucket.Key
+                        let prevValue = bucket.Value
                         bucket.Offset <- offset
                         bucket.HashCode <- hashCode
                         bucket.Key <- key
                         bucket.Value <- value
-                        count <- count + 1
+                        addStructEntry prevKey prevValue
                     else
-                        // If we reach here, we know the bucket is occupied
-                        if EqualityComparer.Default.Equals (hashCode, bucket.HashCode) &&
-                           EqualityComparer.Default.Equals (key, bucket.Key) then
-                            bucket.Value <- value
+                        loop (offset + 1) (bucketIdx + 1)
+            else
+                // Start over looking from the beginning of the buckets
+                loop (offset + 1) 0
 
-                        // If this new value is farther from it's Home than the current entry
-                        // take the entry for the new value and re-insert the prev entry
-                        elif bucket.Offset < offset then
-                            let prevKey = bucket.Key
-                            let prevValue = bucket.Value
-                            bucket.Offset <- offset
-                            bucket.HashCode <- hashCode
-                            bucket.Key <- key
-                            bucket.Value <- value
-                            addEntry prevKey prevValue
-                        else
-                            loop (offset + 1) hashCode (bucketIdx + 1)
+        let bucketIdx = computeBucketIndex hashCode
+        loop 0 bucketIdx
+
+
+    let rec addRefEntry (key: 'Key) (value: 'Value) =
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
+
+        let rec loop (offset: int) (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                let bucket = &buckets[bucketIdx]
+                // Check if bucket is Empty or a Tombstone
+                if bucket.IsAvailable then
+                    bucket.Offset <- offset
+                    bucket.HashCode <- hashCode
+                    bucket.Key <- key
+                    bucket.Value <- value
+                    count <- count + 1
                 else
-                    // Start over looking from the beginning of the buckets
-                    loop (offset + 1) hashCode 0
+                    // If we reach here, we know the bucket is occupied
+                    if hashCode = bucket.HashCode &&
+                       refComparer.Equals (key, bucket.Key) then
+                        bucket.Value <- value
 
-            loop 0 hashCode bucketIdx
-
-        else
-
-            let rec loop (offset: int) (hashCode: int) (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    let bucket = &buckets[bucketIdx]
-                    // Check if bucket is Empty or a Tombstone
-                    if bucket.IsAvailable then
+                    // If this new value is farther from it's Home than the current entry
+                    // take the entry for the new value and re-insert the prev entry
+                    elif bucket.Offset < offset then
+                        let prevKey = bucket.Key
+                        let prevValue = bucket.Value
                         bucket.Offset <- offset
                         bucket.HashCode <- hashCode
                         bucket.Key <- key
                         bucket.Value <- value
-                        count <- count + 1
+                        addRefEntry prevKey prevValue
                     else
-                        // If we reach here, we know the bucket is occupied
-                        if EqualityComparer.Default.Equals (hashCode, bucket.HashCode) &&
-                           refComparer.Equals (key, bucket.Key) then
-                            bucket.Value <- value
+                        loop (offset + 1) (bucketIdx + 1)
+            else
+                // Start over looking from the beginning of the buckets
+                loop (offset + 1) 0
 
-                        // If this new value is farther from it's Home than the current entry
-                        // take the entry for the new value and re-insert the prev entry
-                        elif bucket.Offset < offset then
-                            let prevKey = bucket.Key
-                            let prevValue = bucket.Value
-                            bucket.Offset <- offset
-                            bucket.HashCode <- hashCode
-                            bucket.Key <- key
-                            bucket.Value <- value
-                            addEntry prevKey prevValue
-                        else
-                            loop (offset + 1) hashCode (bucketIdx + 1)
-                else
-                    // Start over looking from the beginning of the buckets
-                    loop (offset + 1) hashCode 0
-
-            loop 0 hashCode bucketIdx
-
-
-    let getValue (key: 'Key) =
-
-        let hashCode = computeHashCode key
         let bucketIdx = computeBucketIndex hashCode
+        loop 0 bucketIdx
 
-        if typeof<'Key>.IsValueType then
 
-            let rec loop (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    let bucket = buckets[bucketIdx]
-                    if bucket.IsEntry then
-                        if EqualityComparer.Default.Equals (hashCode, bucket.HashCode) &&
-                           EqualityComparer.Default.Equals (key, bucket.Key) then
-                            bucket.Value
+    let getStructValue (key: 'Key) =
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
-                        else
-                            loop (bucketIdx + 1)
-
-                    elif bucket.IsTombstone then
-                        loop (bucketIdx + 1)
+        let rec loop (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                let bucket = buckets[bucketIdx]
+                if bucket.IsEntry then
+                    if hashCode = bucket.HashCode &&
+                       EqualityComparer.Default.Equals (key, bucket.Key) then
+                        bucket.Value
 
                     else
-                        raise (KeyNotFoundException())
-                else
-                    loop 0
-
-            loop bucketIdx
-
-        else
-
-            let rec loop (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    let bucket = buckets[bucketIdx]
-                    if bucket.IsEntry then
-                        if EqualityComparer.Default.Equals (hashCode, bucket.HashCode) &&
-                           refComparer.Equals (key, bucket.Key) then
-                            bucket.Value
-
-                        else
-                            loop (bucketIdx + 1)
-
-                    elif bucket.IsTombstone then
                         loop (bucketIdx + 1)
 
-                    else
-                        raise (KeyNotFoundException())
-                else
-                    loop 0
+                elif bucket.IsTombstone then
+                    loop (bucketIdx + 1)
 
-            loop bucketIdx
+                else
+                    raise (KeyNotFoundException())
+            else
+                loop 0
+
+        let bucketIdx = computeBucketIndex hashCode
+        loop bucketIdx
+
+
+    let getRefValue (key: 'Key) =
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
+
+        let rec loop (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                let bucket = buckets[bucketIdx]
+                if bucket.IsEntry then
+                    if hashCode = bucket.HashCode &&
+                       refComparer.Equals (key, bucket.Key) then
+                        bucket.Value
+
+                    else
+                        loop (bucketIdx + 1)
+
+                elif bucket.IsTombstone then
+                    loop (bucketIdx + 1)
+
+                else
+                    raise (KeyNotFoundException())
+            else
+                loop 0
+
+        let bucketIdx = computeBucketIndex hashCode
+        loop bucketIdx
 
 
     let resize () =
@@ -245,14 +238,24 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             for bucket in oldBuckets do
                 if bucket.IsEntry then
-                    addEntry bucket.Key bucket.Value
+                    if typeof<'Key>.IsValueType then
+                        addStructEntry bucket.Key bucket.Value
+                    else
+                        addRefEntry bucket.Key bucket.Value
 
     do
-        for k, v in entries do
-            addEntry k v
+        for key, value in entries do
+            if typeof<'Key>.IsValueType then
+                addStructEntry key value
+            else
+                addRefEntry key value
             resize()
 
     new () = Dictionary<'Key, 'Value>([])
 
     member d.Item
-        with get (key: 'Key) = getValue key
+        with get (key: 'Key) =
+            if typeof<'Key>.IsValueType then
+                getStructValue key
+            else
+                getRefValue key

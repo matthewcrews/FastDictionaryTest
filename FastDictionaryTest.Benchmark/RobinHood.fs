@@ -91,7 +91,7 @@ type RobinHood () =
             acc
 
 
-    [<Benchmark(Description = "Cache Equality")>]
+    [<Benchmark(Description = "RobinHood")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then
