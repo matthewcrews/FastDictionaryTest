@@ -11,6 +11,7 @@ open FastDictionaryTest.Benchmark.Domain
 [<HardwareCounters(HardwareCounter.CacheMisses,
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
+[<DisassemblyDiagnoser(filters=[||])>]
 type ByteListRobinHood () =
 
     let intDictionaries =

@@ -217,11 +217,10 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         else
             listSearch hashCode bucketIdx
 
-
+    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
     let getStructValue (key: 'Key) =
-        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (bucketIdx: int) =
+        let rec loop (hashCode: int) (bucketIdx: int) =
             let bucket = buckets[bucketIdx]
 
             if hashCode = bucket.HashCode &&
@@ -233,16 +232,27 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             else
                 let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
-                loop nextBucketIdx
+                loop hashCode nextBucketIdx
 
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
-        loop bucketIdx
+        let bucket = buckets[bucketIdx]
 
+        if hashCode = bucket.HashCode &&
+           EqualityComparer.Default.Equals (key, bucket.Key) then
+            bucket.Value
 
+        elif bucket.IsLast then
+            raise (KeyNotFoundException())
+
+        else
+            let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
+            loop hashCode nextBucketIdx
+
+    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
     let getRefValue (key: 'Key) =
-        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (bucketIdx: int) =
+        let rec loop (hashCode: int) (bucketIdx: int) =
             let bucket = buckets[bucketIdx]
 
             if hashCode = bucket.HashCode &&
@@ -254,10 +264,22 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             else
                 let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
-                loop nextBucketIdx
+                loop hashCode nextBucketIdx
 
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
-        loop bucketIdx
+        let bucket = buckets[bucketIdx]
+
+        if hashCode = bucket.HashCode &&
+           refComparer.Equals (key, bucket.Key) then
+            bucket.Value
+
+        elif bucket.IsLast then
+            raise (KeyNotFoundException())
+
+        else
+            let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
+            loop hashCode nextBucketIdx
 
 
     // Increase the size of the backing array if the max fill percent has been reached
