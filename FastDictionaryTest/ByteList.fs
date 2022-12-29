@@ -11,44 +11,33 @@ module private Helpers =
 
     let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
 
-    [<Literal>]
-    let POSITIVE_INT_MASK = 0x7FFF_FFFF
-
     [<RequireQualifiedAccess>]
-    module HashCode =
-        let empty = -2
-        let tombstone = -1
-
-    [<RequireQualifiedAccess>]
-    module Offset =
-        let head = 0uy
+    module Next =
+        let empty = Byte.MaxValue
+        let tombstone = Byte.MaxValue - 1uy
         let last = 0uy
 
     [<Struct>]
     type Bucket<'Key, 'Value> =
         {
             mutable HashCode : int
-            mutable PrevOffset : byte
-            mutable NextOffset : byte
+            mutable Next : byte
             mutable Key : 'Key
             mutable Value : 'Value
         }
-        member s.IsTombstone = s.HashCode = HashCode.tombstone
-        member s.IsEmpty = s.HashCode = HashCode.empty
-        member s.IsEntry = s.HashCode >= 0
-        member s.IsOccupied = s.HashCode >= -1
-        member s.IsAvailable = s.HashCode < 0
-        member s.IsHead = s.PrevOffset = Offset.head
-        member s.IsLast = s.NextOffset = Offset.last
-        member s.IsTail = s.PrevOffset > 0uy
+        member s.IsTombstone = s.Next = Next.tombstone
+        member s.IsEmpty = s.Next = Next.empty
+        member s.IsEntry = s.Next < Next.tombstone
+        member s.IsOccupied = s.Next <= Next.tombstone
+        member s.IsAvailable = s.Next >= Next.tombstone
+        member s.IsLast = s.Next = Next.last
 
     module Bucket =
 
         let empty<'Key, 'Value> =
             {
-                HashCode = -1
-                PrevOffset = 0uy
-                NextOffset = 0uy
+                HashCode = Unchecked.defaultof<int>
+                Next = Next.empty
                 Key = Unchecked.defaultof<'Key>
                 Value = Unchecked.defaultof<'Value>
             }
@@ -100,50 +89,65 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Used for Wrap Around addition/subtraction of offsets
     let mutable wrapAroundMask = buckets.Length - 1
 
-
-    // This relies on the number of buckets being a power of 2
     let computeHashCode (key: 'Key) =
         if typeof<'Key>.IsValueType then
-            EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
+            EqualityComparer.Default.GetHashCode key
         else
-            refComparer.GetHashCode key &&& POSITIVE_INT_MASK
+            refComparer.GetHashCode key
 
-
+    // This relies on the number of buckets being a power of 2
     let computeBucketIndex (hashCode: int) =
         let hashProduct = (uint hashCode) * 2654435769u
         int (hashProduct >>> bucketBitShift)
+
+    let isTail (bucketIdx: int) =
+        let bucket = &buckets[bucketIdx]
+        let homeIdx = computeBucketIndex bucket.HashCode
+        bucketIdx <> homeIdx
+
+    let getParentBucketIdx (hashCode: int) (childBucketIdx: int) =
+
+        let rec loop (ancestorIdx: int) =
+            let ancestorBucket = &buckets[ancestorIdx]
+            let nextIdx = (ancestorIdx + int ancestorBucket.Next) &&& wrapAroundMask
+            if nextIdx = childBucketIdx then
+                ancestorIdx
+            else
+                loop nextIdx
+
+        let initialIdx = computeBucketIndex hashCode
+        loop initialIdx
 
 
     let rec addEntry (hashCode: int) (key: 'Key) (value: 'Value) =
 
         let evict (bucketIdx: int) =
             let bucket = &buckets[bucketIdx]
-            let parentBucketIdx = (bucketIdx - (int bucket.PrevOffset)) &&& wrapAroundMask
+            let parentBucketIdx = getParentBucketIdx bucket.HashCode bucketIdx
 
             // If this is the Last element in a List, we just need to update the Parent's
             // NextOffset value to 0 and then re-add this entry
             if bucket.IsLast then
-                buckets[parentBucketIdx].NextOffset <- 0uy
+                buckets[parentBucketIdx].Next <- 0uy
                 addEntry bucket.HashCode bucket.Key bucket.Value
 
             // This element is in the middle of the list so we will remove it from the existing
             // list and then re-add it
             else
-                let childBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
-                buckets[parentBucketIdx].NextOffset <- buckets[parentBucketIdx].NextOffset + bucket.NextOffset
-                buckets[childBucketIdx].PrevOffset <- buckets[childBucketIdx].PrevOffset + bucket.PrevOffset
+                let childBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
+                buckets[parentBucketIdx].Next <- buckets[parentBucketIdx].Next + bucket.Next
                 addEntry bucket.HashCode bucket.Key bucket.Value
 
         let rec insertIntoNextEmptyBucket (hashCode: int) (offset: byte) (bucketIdx: int) : byte =
             if bucketIdx < buckets.Length then
                 let bucket = &buckets[bucketIdx]
                 if bucket.IsAvailable then
-                    bucket.PrevOffset <- offset
-                    bucket.NextOffset <- 0uy
+                    bucket.Next <- Next.last
                     bucket.HashCode <- hashCode
                     bucket.Key <- key
                     bucket.Value <- value
                     count <- count + 1
+                    // Return the Offset for where this new entry was inserted
                     offset
                 else
                     insertIntoNextEmptyBucket hashCode (offset + 1uy) (bucketIdx + 1)
@@ -164,22 +168,21 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             // to add our new Key/Value and update the offset for the previous Last entry.
             elif buckets[bucketIdx].IsLast then
 
-                buckets[bucketIdx].NextOffset <- byte (insertIntoNextEmptyBucket hashCode 1uy (bucketIdx + 1))
+                buckets[bucketIdx].Next <- (insertIntoNextEmptyBucket hashCode 1uy (bucketIdx + 1))
 
             // We are not at the end of the list so we compute the next BucketIdx and move
             // to the next Entry. We use a wrap around mask to ensure we don't go outside
             // the bounds of the array.
             else
                 // Compute the next index which takes the wrap around logic into account
-                let nextBucketIdx = (bucketIdx + (int buckets[bucketIdx].NextOffset)) &&& wrapAroundMask
+                let nextBucketIdx = (bucketIdx + (int buckets[bucketIdx].Next)) &&& wrapAroundMask
                 listSearch hashCode nextBucketIdx
 
         let bucketIdx = computeBucketIndex hashCode
         let bucket = &buckets[bucketIdx]
         // Check if bucket is Empty or a Tombstone
         if bucket.IsAvailable then
-            bucket.PrevOffset <- Offset.head
-            bucket.NextOffset <- Offset.last
+            bucket.Next <- Next.last
             bucket.HashCode <- hashCode
             bucket.Key <- key
             bucket.Value <- value
@@ -191,11 +194,10 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         // Check if the current Entry is part of a chain for a different
         // BucketIdx and should therefore be evicted
-        elif bucket.IsTail then
+        elif isTail bucketIdx then
             // Move the current entry out of this position
             evict bucketIdx
-            bucket.PrevOffset <- Offset.head
-            bucket.NextOffset <- Offset.last
+            bucket.Next <- Next.last
             bucket.HashCode <- hashCode
             bucket.Key <- key
             bucket.Value <- value
@@ -223,7 +225,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     raise (KeyNotFoundException())
 
                 else
-                    let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
+                    let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
                     loop nextBucketIdx
 
             loop bucketIdx
@@ -240,7 +242,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     raise (KeyNotFoundException())
 
                 else
-                    let nextBucketIdx = (bucketIdx + (int bucket.NextOffset)) &&& wrapAroundMask
+                    let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
                     loop nextBucketIdx
 
             loop bucketIdx
@@ -266,11 +268,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     do
         for key, value in entries do
-            let hashCode =
-                if typeof<'Key>.IsValueType then
-                    (EqualityComparer.Default.GetHashCode key) &&& 0x7FFF_FFFF
-                else
-                    (refComparer.GetHashCode key) &&& 0x7FFF_FFFF
+            let hashCode = computeHashCode key
             addEntry hashCode key value
             resize()
 
