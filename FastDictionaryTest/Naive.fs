@@ -24,13 +24,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         bucketIdx
 
 
-    let getValue (key: 'Key) =
-        let bucketIdx = computeBucketIndex key
-        buckets[bucketIdx]
-        |> List.find (fun entry -> entry.Key = key)
-        |> fun entry -> entry.Value
-
-
     let addEntry (key: 'Key) (value: 'Value) =
 
         let rec loop (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
@@ -50,6 +43,13 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         let bucket = buckets[bucketIdx]
         let updatedBucket = loop [] bucket
         buckets[bucketIdx] <- updatedBucket
+
+
+    let getValue (key: 'Key) =
+        let bucketIdx = computeBucketIndex key
+        buckets[bucketIdx]
+        |> List.find (fun entry -> entry.Key = key)
+        |> fun entry -> entry.Value
 
 
     let resize () =

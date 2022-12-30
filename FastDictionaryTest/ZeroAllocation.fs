@@ -26,22 +26,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         bucketIdx
 
 
-    let getValue (key: 'Key) =
-
-        let rec loop (entry: Entry<_,_> list) =
-            match entry with
-            | [] ->
-                raise (KeyNotFoundException())
-            | head::tail ->
-                if EqualityComparer.Default.Equals (head.Key, key) then
-                    head.Value
-                else
-                    loop tail
-
-        let bucketIdx = computeBucketIndex key
-        loop buckets[bucketIdx]
-
-
     let addEntry (key: 'Key) (value: 'Value) =
         let bucketIdx = computeBucketIndex key
         let bucket = buckets[bucketIdx]
@@ -64,6 +48,22 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         let updatedBucket = loop [] bucket
         buckets[bucketIdx] <- updatedBucket
+
+
+    let getValue (key: 'Key) =
+
+        let rec loop (entry: Entry<_,_> list) =
+            match entry with
+            | [] ->
+                raise (KeyNotFoundException())
+            | head::tail ->
+                if EqualityComparer.Default.Equals (head.Key, key) then
+                    head.Value
+                else
+                    loop tail
+
+        let bucketIdx = computeBucketIndex key
+        loop buckets[bucketIdx]
 
 
     let resize () =
