@@ -170,9 +170,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
 
     let getStructValue (key: 'Key) =
-        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (rEntry: RefEntry<'Key, 'Value>) =
+        let rec loop (hashCode: int) (rEntry: RefEntry<'Key, 'Value>) =
             if rEntry.HashCode = hashCode &&
                EqualityComparer.Default.Equals (rEntry.Key, key) then
                 rEntry.Value
@@ -181,8 +180,9 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 if obj.ReferenceEquals (rEntry.Tail, null) then
                     raise (KeyNotFoundException())
                 else
-                    loop rEntry.Tail
+                    loop hashCode rEntry.Tail
 
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
         let sEntry = buckets[bucketIdx]
 
@@ -194,14 +194,13 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             raise (KeyNotFoundException())
 
         else
-            loop sEntry.Tail
+            loop hashCode sEntry.Tail
 
 
     let getRefValue (key: 'Key) =
 
-        let hashCode = (refComparer.GetHashCode key) &&& POSITIVE_INT_MASK
 
-        let rec refLoop (rEntry: RefEntry<'Key, 'Value>) =
+        let rec refLoop (hashCode: int) (rEntry: RefEntry<'Key, 'Value>) =
             if rEntry.HashCode = hashCode &&
                refComparer.Equals (rEntry.Key, key) then
                 rEntry.Value
@@ -209,8 +208,9 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 if obj.ReferenceEquals (rEntry.Tail, null) then
                     raise (KeyNotFoundException())
                 else
-                    refLoop rEntry.Tail
+                    refLoop hashCode rEntry.Tail
 
+        let hashCode = (refComparer.GetHashCode key) &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
         let sEntry = buckets[bucketIdx]
 
@@ -222,7 +222,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             raise (KeyNotFoundException())
 
         else
-            refLoop sEntry.Tail
+            refLoop hashCode sEntry.Tail
 
 
     let resize () =
@@ -236,20 +236,19 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             count <- 0
 
             let rec refLoop (rEntry: RefEntry<'Key, 'Value>) =
-                addEntry rEntry.HashCode rEntry.Key rEntry.Value
+                addEntry rEntry.Key rEntry.Value
                 if not (obj.ReferenceEquals (rEntry.Tail, null)) then
                     refLoop rEntry.Tail
 
             for sEntry in oldBuckets do
-                addEntry sEntry.HashCode sEntry.Key sEntry.Value
-
+                addEntry sEntry.Key sEntry.Value
                 if not (obj.ReferenceEquals (sEntry.Tail, null)) then
                     refLoop sEntry.Tail
 
 
     do
         for key, value in entries do
-            addEntry hashCode key value
+            addEntry key value
             resize()
 
     new () = Dictionary<'Key, 'Value>([])

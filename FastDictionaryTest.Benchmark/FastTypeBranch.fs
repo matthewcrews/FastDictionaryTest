@@ -52,14 +52,14 @@ type FastTypeBranch () =
 
     [<Params(
           KeyCount.``10``
-          // , KeyCount.``100``
-          // , KeyCount.``1_000``
+          , KeyCount.``100``
+          , KeyCount.``1_000``
           , KeyCount.``10_000``
         )>]
     member val KeyCount = KeyCount.``10`` with get, set
 
 
-    [<Benchmark(Description = "Dictionary")>]
+    // [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
 
         if b.KeyType = KeyType.Int then

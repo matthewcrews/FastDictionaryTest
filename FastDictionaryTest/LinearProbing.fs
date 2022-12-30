@@ -156,18 +156,26 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             addRefEntry key value
 
 
+    // Use the stored refComparer to reduce overhead in creating new instances
     let getStructValue (key: 'Key) =
         let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
         let rec loop (bucketIdx: int) =
+            // Make sure that we have not gone past the end of the backing array.
+            // If we have we will want to continue our loop from the beginning of the array.
             if bucketIdx < buckets.Length then
-                if EqualityComparer.Default.Equals (hashCode, buckets[bucketIdx].HashCode) &&
+
+                // Check that our HashCodes match and the Keys are equivalent
+                if hashCode = buckets[bucketIdx].HashCode &&
                    EqualityComparer.Default.Equals (key, buckets[bucketIdx].Key) then
                         buckets[bucketIdx].Value
 
+                // If the Bucket is occupied then we want to move to the next Entry
                 elif buckets[bucketIdx].IsOccupied then
                     loop (bucketIdx + 1)
 
+                // If the Bucket is empty then we have failed to find the Key we
+                // were searching for
                 else
                     raise (KeyNotFoundException())
 
@@ -179,6 +187,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         loop bucketIdx
 
 
+    // Use the default GetHashCode to enable the inlining of code for the JIT
     let getRefValue (key: 'Key) =
         let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
 
@@ -226,7 +235,10 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     member d.Item
         with get (key: 'Key) =
+
+            // Switch on the type to enable the JIT to eliminate unused code and inline method call
             if typeof<'Key>.IsValueType then
                 getStructValue key
+
             else
                 getRefValue key

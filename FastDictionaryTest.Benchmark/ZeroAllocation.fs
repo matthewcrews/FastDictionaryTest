@@ -59,7 +59,7 @@ type ZeroAllocation () =
     member val KeyCount = KeyCount.``10`` with get, set
 
 
-    [<Benchmark(Description = "Dictionary")>]
+    // [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
 
         if b.KeyType = KeyType.Int then

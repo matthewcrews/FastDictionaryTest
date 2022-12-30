@@ -27,8 +27,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
 
     let addEntry (key: 'Key) (value: 'Value) =
-        let bucketIdx = computeBucketIndex key
-        let bucket = buckets[bucketIdx]
 
         let rec loop (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
             match remaining with
@@ -46,6 +44,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 else
                     loop (head::acc) tail
 
+        let bucketIdx = computeBucketIndex key
+        let bucket = buckets[bucketIdx]
         let updatedBucket = loop [] bucket
         buckets[bucketIdx] <- updatedBucket
 
