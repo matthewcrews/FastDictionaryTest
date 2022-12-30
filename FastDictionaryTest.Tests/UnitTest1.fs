@@ -18,7 +18,7 @@ type Value =
     }
 
 let data =
-    [for _ in 1..10 ->
+    [for _ in 1..12 ->
         { Value = rng.Next (minKey, maxKey) }, rng.Next maxValue]
     |> List.distinctBy fst
 

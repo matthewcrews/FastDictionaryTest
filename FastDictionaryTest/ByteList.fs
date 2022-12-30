@@ -134,7 +134,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             // This element is in the middle of the list so we will remove it from the existing
             // list and then re-add it
             else
-                let childBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
                 buckets[parentBucketIdx].Next <- buckets[parentBucketIdx].Next + bucket.Next
                 addEntry bucket.HashCode bucket.Key bucket.Value
 
