@@ -109,6 +109,16 @@ let ``ByteList RobinHood Dictionary matches`` () =
 
 
 [<Test>]
+let ``ByteList RobinHood Inline Dictionary matches`` () =
+
+    let testDictionary = ByteListRobinHoodInline.Dictionary data
+
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = testDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)
+
+
+[<Test>]
 let ``ByteList RobinHood Vec128 Dictionary matches`` () =
 
     let testDictionary = ByteListRobinHoodVec128.Dictionary data

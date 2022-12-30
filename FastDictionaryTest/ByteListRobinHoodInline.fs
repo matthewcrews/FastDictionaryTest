@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.ByteListRobinHood
+﻿namespace FastDictionaryTest.ByteListRobinHoodInline
 
 open System
 open System.Numerics
@@ -230,6 +230,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         else
             listSearch hashCode bucketIdx
 
+    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
     let getStructValue (key: 'Key) =
 
         let rec loop (hashCode: int) (bucketIdx: int) =
@@ -248,9 +249,20 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         let hashCode = EqualityComparer.Default.GetHashCode key
         let bucketIdx = computeBucketIndex hashCode
-        loop hashCode bucketIdx
+        let bucket = buckets[bucketIdx]
 
+        if hashCode = bucket.HashCode &&
+           EqualityComparer.Default.Equals (key, bucket.Key) then
+            bucket.Value
 
+        elif bucket.IsLast then
+            raise (KeyNotFoundException())
+
+        else
+            let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
+            loop hashCode nextBucketIdx
+
+    [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
     let getRefValue (key: 'Key) =
 
         let rec loop (hashCode: int) (bucketIdx: int) =
@@ -269,7 +281,18 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         let hashCode = refComparer.GetHashCode key
         let bucketIdx = computeBucketIndex hashCode
-        loop hashCode bucketIdx
+        let bucket = buckets[bucketIdx]
+
+        if hashCode = bucket.HashCode &&
+           refComparer.Equals (key, bucket.Key) then
+            bucket.Value
+
+        elif bucket.IsLast then
+            raise (KeyNotFoundException())
+
+        else
+            let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
+            loop hashCode nextBucketIdx
 
 
     // Increase the size of the backing array if the max fill percent has been reached

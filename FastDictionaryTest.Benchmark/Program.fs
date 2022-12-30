@@ -75,8 +75,12 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
-
     | "bytelistrobinhood" ->
+        let b = ByteListRobinHood()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
+    | "bytelistrobinhoodinline" ->
         let b = ByteListRobinHood()
         for i in 1 .. loopCount do
             result <- b.Test()
@@ -150,6 +154,10 @@ let main argv =
 
         | "bytelistrobinhood" ->
             let _ = BenchmarkRunner.Run<ByteListRobinHood>()
+            ()
+
+        | "bytelistrobinhoodinline" ->
+            let _ = BenchmarkRunner.Run<ByteListRobinHoodInline>()
             ()
 
         | "bytelistrobinhoodvec128" ->
