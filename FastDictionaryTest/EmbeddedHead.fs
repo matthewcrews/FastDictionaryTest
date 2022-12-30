@@ -97,66 +97,76 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         int (hashProduct >>> bucketBitShift)
 
 
-    let addEntry (hashCode: int) (key: 'Key) (value: 'Value) =
+    let addStructEntry (key: 'Key) (value: 'Value) =
 
-        if typeof<'Key>.IsValueType then
+        let rec refNodeLoop (hashCode: int) (rEntry: RefEntry<_,_>) =
+            if rEntry.HashCode = hashCode &&
+               EqualityComparer.Default.Equals (rEntry.Key, key) then
 
-            let rec refLoop (rEntry: RefEntry<_,_>) =
-                if rEntry.HashCode = hashCode &&
-                   EqualityComparer.Default.Equals (rEntry.Key, key) then
+                rEntry.Value <- value
 
-                    rEntry.Value <- value
-
-                elif obj.ReferenceEquals (rEntry.Tail, null) then
-                    rEntry.Tail <- RefEntry (hashCode, key, value)
-                    count <- count + 1
-
-                else
-                    refLoop rEntry.Tail
-
-            let bucketIdx = computeBucketIndex hashCode
-            let sEntry = &buckets[bucketIdx]
-
-            if sEntry.HashCode = hashCode &&
-               EqualityComparer.Default.Equals (sEntry.Key, key) then
-
-                sEntry.Value <- value
-
-            elif obj.ReferenceEquals (sEntry.Tail, null) then
-                sEntry.Tail <- RefEntry (hashCode, key, value)
+            elif obj.ReferenceEquals (rEntry.Tail, null) then
+                rEntry.Tail <- RefEntry (hashCode, key, value)
                 count <- count + 1
+
             else
-                refLoop sEntry.Tail
+                refNodeLoop hashCode rEntry.Tail
+
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
+        let bucketIdx = computeBucketIndex hashCode
+        let sEntry = &buckets[bucketIdx]
+
+        if sEntry.HashCode = hashCode &&
+           EqualityComparer.Default.Equals (sEntry.Key, key) then
+
+            sEntry.Value <- value
+
+        elif obj.ReferenceEquals (sEntry.Tail, null) then
+            sEntry.Tail <- RefEntry (hashCode, key, value)
+            count <- count + 1
+        else
+            refNodeLoop hashCode sEntry.Tail
+
+
+    let addRefEntry (key: 'Key) (value: 'Value) =
+
+        let rec refNodeLoop (hashCode: int) (rEntry: RefEntry<_,_>) =
+            if rEntry.HashCode = hashCode &&
+               refComparer.Equals (rEntry.Key, key) then
+
+                rEntry.Value <- value
+
+            elif obj.ReferenceEquals (rEntry.Tail, null) then
+                rEntry.Tail <- RefEntry (hashCode, key, value)
+                count <- count + 1
+
+            else
+                refNodeLoop hashCode rEntry.Tail
+
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
+        let bucketIdx = computeBucketIndex hashCode
+        let sEntry = &buckets[bucketIdx]
+
+        if sEntry.HashCode = hashCode &&
+           refComparer.Equals (sEntry.Key, key) then
+
+            sEntry.Value <- value
+
+        elif obj.ReferenceEquals (sEntry.Tail, null) then
+            sEntry.Tail <- RefEntry (hashCode, key, value)
+            count <- count + 1
 
         else
+            refNodeLoop hashCode sEntry.Tail
 
-            let rec refLoop (rEntry: RefEntry<_,_>) =
-                if rEntry.HashCode = hashCode &&
-                   refComparer.Equals (rEntry.Key, key) then
 
-                    rEntry.Value <- value
+    let addEntry (key: 'Key) (value: 'Value) =
 
-                elif obj.ReferenceEquals (rEntry.Tail, null) then
-                    rEntry.Tail <- RefEntry (hashCode, key, value)
-                    count <- count + 1
+        if typeof<'Key>.IsValueType then
+            addStructEntry key value
 
-                else
-                    refLoop rEntry.Tail
-
-            let bucketIdx = computeBucketIndex hashCode
-            let sEntry = &buckets[bucketIdx]
-
-            if sEntry.HashCode = hashCode &&
-               refComparer.Equals (sEntry.Key, key) then
-
-                sEntry.Value <- value
-
-            elif obj.ReferenceEquals (sEntry.Tail, null) then
-                sEntry.Tail <- RefEntry (hashCode, key, value)
-                count <- count + 1
-
-            else
-                refLoop sEntry.Tail
+        else
+            addRefEntry key value
 
 
     let getStructValue (key: 'Key) =
@@ -239,12 +249,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     do
         for key, value in entries do
-            let hashCode =
-                if typeof<'Key>.IsValueType then
-                    EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
-                else
-                    refComparer.GetHashCode key &&& POSITIVE_INT_MASK
-
             addEntry hashCode key value
             resize()
 

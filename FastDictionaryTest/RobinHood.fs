@@ -173,6 +173,14 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         loop 0 bucketIdx
 
 
+    let addEntry (key: 'Key) (value: 'Value) =
+
+        if typeof<'Key>.IsValueType then
+            addStructEntry key value
+        else
+            addRefEntry key value
+
+
     let getStructValue (key: 'Key) =
         let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
@@ -238,17 +246,11 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             for bucket in oldBuckets do
                 if bucket.IsEntry then
-                    if typeof<'Key>.IsValueType then
-                        addStructEntry bucket.Key bucket.Value
-                    else
-                        addRefEntry bucket.Key bucket.Value
+                    addEntry bucket.Key bucket.Value
 
     do
         for key, value in entries do
-            if typeof<'Key>.IsValueType then
-                addStructEntry key value
-            else
-                addRefEntry key value
+            addEntry key value
             resize()
 
     new () = Dictionary<'Key, 'Value>([])

@@ -69,57 +69,64 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         int (hashProduct >>> bucketBitShift)
 
 
+    let addStructEntry (key: 'Key) (value: 'Value) =
+
+        let rec loop (hashCode: int) (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
+            match remaining with
+            | [] ->
+                let newEntry = { HashCode = hashCode; Key = key; Value = value }
+                // Increment the count since we have added an entry
+                count <- count + 1
+                newEntry :: acc
+
+            | head::tail ->
+                if head.HashCode = hashCode && EqualityComparer<'Key>.Default.Equals (head.Key, key) then
+                    // Do not increment the count in this case because we are just overwriting an
+                    // exising value
+                    let updatedEntry = { head with Value = value }
+                    (updatedEntry::acc) @ tail
+                else
+                    loop hashCode (head::acc) tail
+
+        let hashCode = EqualityComparer.Default.GetHashCode key
+        let bucketIdx = computeBucketIndex hashCode
+        let bucket = buckets[bucketIdx]
+        let updatedBucket = loop hashCode [] bucket
+        buckets[bucketIdx] <- updatedBucket
+
+
+    let addRefEntry (key: 'Key) (value: 'Value) =
+
+        let rec loop (hashCode: int) (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
+            match remaining with
+            | [] ->
+                let newEntry = { HashCode = hashCode; Key = key; Value = value }
+                // Increment the count since we have added an entry
+                count <- count + 1
+                newEntry :: acc
+
+            | head::tail ->
+                if head.HashCode = hashCode && refComparer.Equals (head.Key, key) then
+                    // Do not increment the count in this case because we are just overwriting an
+                    // exising value
+                    let updatedEntry = { head with Value = value }
+                    (updatedEntry::acc) @ tail
+                else
+                    loop hashCode (head::acc) tail
+
+        let hashCode = refComparer.GetHashCode key
+        let bucketIdx = computeBucketIndex hashCode
+        let bucket = buckets[bucketIdx]
+        let updatedBucket = loop hashCode [] bucket
+        buckets[bucketIdx] <- updatedBucket
+
+
     let addEntry (key: 'Key) (value: 'Value) =
 
         if typeof<'Key>.IsValueType then
-            let hashCode = EqualityComparer.Default.GetHashCode key
-
-            let rec loop (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
-                match remaining with
-                | [] ->
-                    let newEntry = { HashCode = hashCode; Key = key; Value = value }
-                    // Increment the count since we have added an entry
-                    count <- count + 1
-                    newEntry :: acc
-
-                | head::tail ->
-                    if head.HashCode = hashCode && EqualityComparer<'Key>.Default.Equals (head.Key, key) then
-                        // Do not increment the count in this case because we are just overwriting an
-                        // exising value
-                        let updatedEntry = { head with Value = value }
-                        (updatedEntry::acc) @ tail
-                    else
-                        loop (head::acc) tail
-
-            let bucketIdx = computeBucketIndex hashCode
-            let bucket = buckets[bucketIdx]
-            let updatedBucket = loop [] bucket
-            buckets[bucketIdx] <- updatedBucket
-
+            addStructEntry key value
         else
-            let hashCode = refComparer.GetHashCode key
-
-            let rec loop (acc: Entry<_,_> list) (remaining: Entry<_,_> list) =
-                match remaining with
-                | [] ->
-                    let newEntry = { HashCode = hashCode; Key = key; Value = value }
-                    // Increment the count since we have added an entry
-                    count <- count + 1
-                    newEntry :: acc
-
-                | head::tail ->
-                    if head.HashCode = hashCode && refComparer.Equals (head.Key, key) then
-                        // Do not increment the count in this case because we are just overwriting an
-                        // exising value
-                        let updatedEntry = { head with Value = value }
-                        (updatedEntry::acc) @ tail
-                    else
-                        loop (head::acc) tail
-
-            let bucketIdx = computeBucketIndex hashCode
-            let bucket = buckets[bucketIdx]
-            let updatedBucket = loop [] bucket
-            buckets[bucketIdx] <- updatedBucket
+            addRefEntry key value
 
 
     let getStructValue (key: 'Key) =
