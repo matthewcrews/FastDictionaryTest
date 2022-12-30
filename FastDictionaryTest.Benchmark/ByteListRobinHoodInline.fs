@@ -60,7 +60,7 @@ type ByteListRobinHoodInline () =
     member val KeyCount = KeyCount.``10`` with get, set
 
 
-    [<Benchmark(Description = "Dictionary")>]
+    // [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
 
         if b.KeyType = KeyType.Int then
@@ -92,7 +92,7 @@ type ByteListRobinHoodInline () =
             acc
 
 
-    [<Benchmark(Description = "ByteList RobinHood")>]
+    [<Benchmark(Description = "ByteList RobinHood Inline")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then

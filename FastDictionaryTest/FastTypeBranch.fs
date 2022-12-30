@@ -69,42 +69,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         int (hashProduct >>> bucketBitShift)
 
 
-    let getStructValue (key: 'Key) =
-        let hashCode = EqualityComparer.Default.GetHashCode key
-
-        let rec loop (entry: Entry<_,_> list) =
-            match entry with
-            | [] ->
-                raise (KeyNotFoundException())
-            | head::tail ->
-                if head.HashCode = hashCode && EqualityComparer.Default.Equals (head.Key, key) then
-                    head.Value
-                else
-                    loop tail
-
-        let bucketIdx = computeBucketIndex hashCode
-        let bucket = buckets[bucketIdx]
-        loop bucket
-
-
-    let getRefValue (key: 'Key) =
-        let hashCode = refComparer.GetHashCode key
-
-        let rec loop (entry: Entry<_,_> list) =
-            match entry with
-            | [] ->
-                raise (KeyNotFoundException())
-            | head::tail ->
-                if head.HashCode = hashCode && refComparer.Equals (head.Key, key) then
-                    head.Value
-                else
-                    loop tail
-
-        let bucketIdx = computeBucketIndex hashCode
-        let bucket = buckets[bucketIdx]
-        loop bucket
-
-
     let addEntry (key: 'Key) (value: 'Value) =
 
         if typeof<'Key>.IsValueType then
@@ -156,6 +120,42 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             let bucket = buckets[bucketIdx]
             let updatedBucket = loop [] bucket
             buckets[bucketIdx] <- updatedBucket
+
+
+    let getStructValue (key: 'Key) =
+        let hashCode = EqualityComparer.Default.GetHashCode key
+
+        let rec loop (entry: Entry<_,_> list) =
+            match entry with
+            | [] ->
+                raise (KeyNotFoundException())
+            | head::tail ->
+                if head.HashCode = hashCode && EqualityComparer.Default.Equals (head.Key, key) then
+                    head.Value
+                else
+                    loop tail
+
+        let bucketIdx = computeBucketIndex hashCode
+        let bucket = buckets[bucketIdx]
+        loop bucket
+
+
+    let getRefValue (key: 'Key) =
+        let hashCode = refComparer.GetHashCode key
+
+        let rec loop (entry: Entry<_,_> list) =
+            match entry with
+            | [] ->
+                raise (KeyNotFoundException())
+            | head::tail ->
+                if head.HashCode = hashCode && refComparer.Equals (head.Key, key) then
+                    head.Value
+                else
+                    loop tail
+
+        let bucketIdx = computeBucketIndex hashCode
+        let bucket = buckets[bucketIdx]
+        loop bucket
 
 
     let resize () =

@@ -190,56 +190,56 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             loop 0 hashCode bucketIdx
 
 
-    let getValue (key: 'Key) =
+    let getStructValue (key: 'Key) =
+
+        let rec loop (hashCode: int) (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                let bucket = buckets[bucketIdx]
+                if bucket.IsEntry then
+                    if hashCode = bucket.HashCode &&
+                       EqualityComparer.Default.Equals (key, bucket.Key) then
+                        bucket.Value
+
+                    else
+                        loop hashCode (bucketIdx + 1)
+
+                elif bucket.IsTombstone then
+                    loop hashCode (bucketIdx + 1)
+
+                else
+                    raise (KeyNotFoundException())
+            else
+                loop hashCode 0
 
         let hashCode = computeHashCode key
         let bucketIdx = computeBucketIndex hashCode
+        loop hashCode bucketIdx
 
-        if typeof<'Key>.IsValueType then
 
-            let rec loop (hashCode: int) (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    let bucket = buckets[bucketIdx]
-                    if bucket.IsEntry then
-                        if hashCode = bucket.HashCode &&
-                           EqualityComparer.Default.Equals (key, bucket.Key) then
-                            bucket.Value
+    let getRefValue (key: 'Key) =
 
-                        else
-                            loop hashCode (bucketIdx + 1)
-
-                    elif bucket.IsTombstone then
-                        loop hashCode (bucketIdx + 1)
+        let rec loop (hashCode: int) (bucketIdx: int) =
+            if bucketIdx < buckets.Length then
+                let bucket = buckets[bucketIdx]
+                if bucket.IsEntry then
+                    if hashCode = bucket.HashCode &&
+                       refComparer.Equals (key, bucket.Key) then
+                        bucket.Value
 
                     else
-                        raise (KeyNotFoundException())
-                else
-                    loop hashCode 0
-
-            loop hashCode bucketIdx
-
-        else
-
-            let rec loop (hashCode: int) (bucketIdx: int) =
-                if bucketIdx < buckets.Length then
-                    let bucket = buckets[bucketIdx]
-                    if bucket.IsEntry then
-                        if hashCode = bucket.HashCode &&
-                           refComparer.Equals (key, bucket.Key) then
-                            bucket.Value
-
-                        else
-                            loop hashCode (bucketIdx + 1)
-
-                    elif bucket.IsTombstone then
                         loop hashCode (bucketIdx + 1)
 
-                    else
-                        raise (KeyNotFoundException())
-                else
-                    loop hashCode 0
+                elif bucket.IsTombstone then
+                    loop hashCode (bucketIdx + 1)
 
-            loop hashCode bucketIdx
+                else
+                    raise (KeyNotFoundException())
+            else
+                loop hashCode 0
+
+        let hashCode = computeHashCode key
+        let bucketIdx = computeBucketIndex hashCode
+        loop hashCode bucketIdx
 
 
     let resize () =
@@ -265,4 +265,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     new () = Dictionary<'Key, 'Value>([])
 
     member d.Item
-        with get (key: 'Key) = getValue key
+        with get (key: 'Key) =
+            if typeof<'Key>.IsValueType then
+                getStructValue key
+            else
+                getRefValue key
