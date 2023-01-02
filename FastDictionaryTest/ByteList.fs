@@ -89,21 +89,18 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Used for Wrap Around addition/subtraction of offsets
     let mutable wrapAroundMask = buckets.Length - 1
 
-    let computeHashCode (key: 'Key) =
-        if typeof<'Key>.IsValueType then
-            EqualityComparer.Default.GetHashCode key
-        else
-            refComparer.GetHashCode key
 
     // This relies on the number of buckets being a power of 2
     let computeBucketIndex (hashCode: int) =
         let hashProduct = (uint hashCode) * 2654435769u
         int (hashProduct >>> bucketBitShift)
 
+
     let isTail (bucketIdx: int) =
         let bucket = &buckets[bucketIdx]
         let homeIdx = computeBucketIndex bucket.HashCode
         bucketIdx <> homeIdx
+
 
     let getParentBucketIdx (hashCode: int) (childBucketIdx: int) =
 
@@ -119,7 +116,15 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         loop initialIdx
 
 
-    let rec addEntry (hashCode: int) (key: 'Key) (value: 'Value) =
+    let setBucket next hashCode key value bucketIdx =
+        let bucket = &buckets[bucketIdx]
+        bucket.Next <- next
+        bucket.HashCode <- hashCode
+        bucket.Key <- key
+        bucket.Value <- value
+
+
+    let rec addStructEntry (hashCode: int) (key: 'Key) (value: 'Value) =
 
         let evict (bucketIdx: int) =
             let bucket = &buckets[bucketIdx]
@@ -129,22 +134,19 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             // NextOffset value to 0 and then re-add this entry
             if bucket.IsLast then
                 buckets[parentBucketIdx].Next <- 0uy
-                addEntry bucket.HashCode bucket.Key bucket.Value
+                addStructEntry bucket.HashCode bucket.Key bucket.Value
 
             // This element is in the middle of the list so we will remove it from the existing
             // list and then re-add it
             else
                 buckets[parentBucketIdx].Next <- buckets[parentBucketIdx].Next + bucket.Next
-                addEntry bucket.HashCode bucket.Key bucket.Value
+                addStructEntry bucket.HashCode bucket.Key bucket.Value
 
         let rec insertIntoNextEmptyBucket (hashCode: int) (offset: byte) (bucketIdx: int) : byte =
             if bucketIdx < buckets.Length then
                 let bucket = &buckets[bucketIdx]
                 if bucket.IsAvailable then
-                    bucket.Next <- Next.last
-                    bucket.HashCode <- hashCode
-                    bucket.Key <- key
-                    bucket.Value <- value
+                    setBucket Next.last hashCode key value bucketIdx
                     count <- count + 1
                     // Return the Offset for where this new entry was inserted
                     offset
@@ -159,7 +161,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             // Check if we have found an existing Entry for the Key
             // If we have, we want to update the value
-            if bucket.HashCode = hashCode && bucket.Key = key then
+            if bucket.HashCode = hashCode &&
+               EqualityComparer.Default.Equals (bucket.Key, key) then
                 bucket.Value <- value
 
             // The Entry is not a match for Key so we need to check if we have come
@@ -181,14 +184,13 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         let bucket = &buckets[bucketIdx]
         // Check if bucket is Empty or a Tombstone
         if bucket.IsAvailable then
-            bucket.Next <- Next.last
-            bucket.HashCode <- hashCode
-            bucket.Key <- key
-            bucket.Value <- value
+            setBucket Next.last hashCode key value bucketIdx
             count <- count + 1
 
         // If there is already an entry for this Key, overwrite the Value
-        elif bucket.HashCode = hashCode && bucket.Key = key then
+        elif bucket.HashCode = hashCode &&
+             EqualityComparer.Default.Equals (bucket.Key, key) then
+
             bucket.Value <- value
 
         // Check if the current Entry is part of a chain for a different
@@ -196,10 +198,90 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         elif isTail bucketIdx then
             // Move the current entry out of this position
             evict bucketIdx
-            bucket.Next <- Next.last
-            bucket.HashCode <- hashCode
-            bucket.Key <- key
+            setBucket Next.last hashCode key value bucketIdx
+            count <- count + 1
+
+        // In this case, the current Entry is the head of a list that
+        // we need to append to. We start searching for the tail of the list
+        else
+            listSearch hashCode bucketIdx
+
+
+    let rec addRefEntry (hashCode: int) (key: 'Key) (value: 'Value) =
+
+        let evict (bucketIdx: int) =
+            let bucket = &buckets[bucketIdx]
+            let parentBucketIdx = getParentBucketIdx bucket.HashCode bucketIdx
+
+            // If this is the Last element in a List, we just need to update the Parent's
+            // NextOffset value to 0 and then re-add this entry
+            if bucket.IsLast then
+                buckets[parentBucketIdx].Next <- 0uy
+                addRefEntry bucket.HashCode bucket.Key bucket.Value
+
+            // This element is in the middle of the list so we will remove it from the existing
+            // list and then re-add it
+            else
+                buckets[parentBucketIdx].Next <- buckets[parentBucketIdx].Next + bucket.Next
+                addRefEntry bucket.HashCode bucket.Key bucket.Value
+
+        let rec insertIntoNextEmptyBucket (hashCode: int) (offset: byte) (bucketIdx: int) : byte =
+            if bucketIdx < buckets.Length then
+                let bucket = &buckets[bucketIdx]
+                if bucket.IsAvailable then
+                    setBucket Next.last hashCode key value bucketIdx
+                    count <- count + 1
+                    // Return the Offset for where this new entry was inserted
+                    offset
+                else
+                    insertIntoNextEmptyBucket hashCode (offset + 1uy) (bucketIdx + 1)
+
+            else
+                insertIntoNextEmptyBucket hashCode offset 0
+
+        let rec listSearch (hashCode: int) (bucketIdx: int) =
+            let bucket = &buckets[bucketIdx]
+
+            // Check if we have found an existing Entry for the Key
+            // If we have, we want to update the value
+            if bucket.HashCode = hashCode &&
+               refComparer.Equals (bucket.Key, key) then
+                bucket.Value <- value
+
+            // The Entry is not a match for Key so we need to check if we have come
+            // to the end of the list. If we have, then we search for empty space
+            // to add our new Key/Value and update the offset for the previous Last entry.
+            elif buckets[bucketIdx].IsLast then
+
+                buckets[bucketIdx].Next <- (insertIntoNextEmptyBucket hashCode 1uy (bucketIdx + 1))
+
+            // We are not at the end of the list so we compute the next BucketIdx and move
+            // to the next Entry. We use a wrap around mask to ensure we don't go outside
+            // the bounds of the array.
+            else
+                // Compute the next index which takes the wrap around logic into account
+                let nextBucketIdx = (bucketIdx + (int buckets[bucketIdx].Next)) &&& wrapAroundMask
+                listSearch hashCode nextBucketIdx
+
+        let bucketIdx = computeBucketIndex hashCode
+        let bucket = &buckets[bucketIdx]
+        // Check if bucket is Empty or a Tombstone
+        if bucket.IsAvailable then
+            setBucket Next.last hashCode key value bucketIdx
+            count <- count + 1
+
+        // If there is already an entry for this Key, overwrite the Value
+        elif bucket.HashCode = hashCode &&
+             refComparer.Equals (bucket.Key, key) then
+
             bucket.Value <- value
+
+        // Check if the current Entry is part of a chain for a different
+        // BucketIdx and should therefore be evicted
+        elif isTail bucketIdx then
+            // Move the current entry out of this position
+            evict bucketIdx
+            setBucket Next.last hashCode key value bucketIdx
             count <- count + 1
 
         // In this case, the current Entry is the head of a list that
@@ -223,7 +305,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
                 loop hashCode nextBucketIdx
 
-        let hashCode = computeHashCode key
+        let hashCode = EqualityComparer.Default.GetHashCode key
         let bucketIdx = computeBucketIndex hashCode
         loop hashCode bucketIdx
 
@@ -243,7 +325,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
                 loop hashCode nextBucketIdx
 
-        let hashCode = computeHashCode key
+        let hashCode = refComparer.GetHashCode key
         let bucketIdx = computeBucketIndex hashCode
         loop hashCode bucketIdx
 
@@ -264,12 +346,17 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             for bucket in oldBuckets do
                 if bucket.IsEntry then
-                    addEntry bucket.HashCode bucket.Key bucket.Value
+                    addRefEntry bucket.HashCode bucket.Key bucket.Value
 
     do
         for key, value in entries do
-            let hashCode = computeHashCode key
-            addEntry hashCode key value
+
+            if typeof<'Key>.IsValueType then
+                let hashCode = EqualityComparer.Default.GetHashCode key
+                addStructEntry hashCode key value
+            else
+                let hashCode = refComparer.GetHashCode key
+                addRefEntry hashCode key value
             resize()
 
     new () = Dictionary<'Key, 'Value>([])
