@@ -99,7 +99,7 @@ let profile (version: string) loopCount =
 [<EntryPoint>]
 let main argv =
 
-    let parser = ArgumentParser.Create<Args> (programName = "Topological Sort")
+    let parser = ArgumentParser.Create<Args> (programName = "Fast Dictionary")
     let results = parser.Parse argv
     let task = results.GetResult Args.Task
 
