@@ -32,10 +32,10 @@ let intDataSets =
              let d = Dictionary()
 
              while d.Count < count do
-                 let k = rng.Next (minKey, maxKey)
+                 // let k = rng.Next (minKey, maxKey)
                  // Make the range of keys brutal for a naive Hashing function for mapping
                  // keys to slots
-                 // let k = ((rng.Next (minKey, maxKey)) <<< 16)
+                 let k = ((rng.Next (minKey, maxKey)) <<< 16)
                  let v = rng.Next maxValue
                  d[k] <- v
 
