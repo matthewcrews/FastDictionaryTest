@@ -164,6 +164,10 @@ let main argv =
             let _ = BenchmarkRunner.Run<ByteListRobinHoodVec128>()
             ()
 
+        | "fastbyte" ->
+            let _ = BenchmarkRunner.Run<FastByte>()
+            ()
+
         | unknownSuite ->
             failwith $"Unknown suite of benchmarks: {unknownSuite}"
         ()

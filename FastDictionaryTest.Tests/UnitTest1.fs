@@ -126,3 +126,13 @@ let ``ByteList RobinHood Vec128 Dictionary matches`` () =
     for KeyValue (k, expectedValue) in expectedValues do
         let actualValue = testDictionary[k]
         Assert.AreEqual (expectedValue, actualValue)
+
+
+[<Test>]
+let ``FastByte Dictionary matches`` () =
+
+    let testDictionary = FastByte.Dictionary data
+
+    for KeyValue (k, expectedValue) in expectedValues do
+        let actualValue = testDictionary[k]
+        Assert.AreEqual (expectedValue, actualValue)

@@ -2,12 +2,13 @@
 
 open System
 open System.Numerics
+open System.Runtime.CompilerServices
 open Microsoft.FSharp.NativeInterop
 open System.Collections.Generic
 
 #nowarn "9" "42" "51"
 
-module private Helpers =
+module Helpers =
 
     let inline retype<'T,'U> (x: 'T) : 'U = (# "" x: 'U #)
 
@@ -91,14 +92,14 @@ module private Helpers =
                     EqualityComparer<'Key>.Default :> IEqualityComparer<'Key>
             {
                 Count = 0
-                Buckets = Array.zeroCreate initialLength
+                Buckets = Array.create initialLength Bucket.empty
                 BucketBitShift = 64 - (BitOperations.TrailingZeroCount initialLength)
                 WrapAroundMask = initialLength - 1
                 Comparer = refComparer
             }
 
 
-    let computeBucketIndex bucketBitShift (hashCode: int) =
+    let inline computeBucketIndex bucketBitShift (hashCode: int) =
         let hashProduct = (uint hashCode) * 2654435769u
         int (hashProduct >>> bucketBitShift)
 
@@ -256,6 +257,45 @@ module private Helpers =
                 listSearch &internals hashCode key value bucketIdx
 
 
+        [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
+        let getValue
+            (internals: inref<Internals<_,_>>)
+            (key: 'Key)
+            =
+            let buckets = internals.Buckets
+            let wrapAroundMask = internals.WrapAroundMask
+            let bucketBitShift = internals.BucketBitShift
+
+            let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
+                let bucket = buckets[bucketIdx]
+
+                if hashCode = bucket.HashCode &&
+                   EqualityComparer.Default.Equals (key, bucket.Key) then
+                    bucket.Value
+
+                elif bucket.IsLast then
+                    raise (KeyNotFoundException())
+
+                else
+                    let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
+                    loop hashCode key nextBucketIdx
+
+            let hashCode = EqualityComparer.Default.GetHashCode key
+            let bucketIdx = computeBucketIndex bucketBitShift hashCode
+            let bucket = buckets[bucketIdx]
+
+            if hashCode = bucket.HashCode &&
+               EqualityComparer.Default.Equals (key, bucket.Key) then
+                bucket.Value
+
+            elif bucket.IsLast then
+                raise (KeyNotFoundException())
+
+            else
+                let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
+                loop hashCode key nextBucketIdx
+
+
     module rec Ref =
 
         let rec insertIntoNextEmptyBucket
@@ -364,68 +404,33 @@ module private Helpers =
                 listSearch &internals hashCode key value bucketIdx
 
 
-    let addEntry (internals: byref<Internals<_,_>>) (key: 'Key) (value: 'Value) =
+        [<MethodImpl(MethodImplOptions.AggressiveInlining)>]
+        let getValue
+            (internals: inref<Internals<'Key,_>>)
+            (key: 'Key)
+            =
 
-        if typeof<'Key>.IsValueType then
-            let hashCode = EqualityComparer.Default.GetHashCode key
-            Struct.addEntry &internals hashCode key value
-        else
-            let hashCode = internals.Comparer.GetHashCode key
-            Ref.addEntry &internals hashCode key value
+            let buckets = internals.Buckets
+            let wrapAroundMask = internals.WrapAroundMask
+            let bucketBitShift = internals.BucketBitShift
+            let comparer = internals.Comparer
 
+            let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
+                let bucket = buckets[bucketIdx]
 
-    let getStructValue
-        (internals: inref<Internals<_,_>>)
-        (key: 'Key)
-        =
-        let buckets = internals.Buckets
-        let wrapAroundMask = internals.WrapAroundMask
+                if hashCode = bucket.HashCode &&
+                   comparer.Equals (key, bucket.Key) then
+                    bucket.Value
 
-        let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
-            let bucket = buckets[bucketIdx]
+                elif bucket.IsLast then
+                    raise (KeyNotFoundException())
 
-            if hashCode = bucket.HashCode &&
-               EqualityComparer.Default.Equals (key, bucket.Key) then
-                bucket.Value
+                else
+                    let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
+                    loop hashCode key nextBucketIdx
 
-            elif bucket.IsLast then
-                raise (KeyNotFoundException())
-
-            else
-                let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
-                loop hashCode key nextBucketIdx
-
-        let hashCode = EqualityComparer.Default.GetHashCode key
-        let bucketIdx = computeBucketIndex internals.BucketBitShift hashCode
-        let bucket = buckets[bucketIdx]
-
-        if hashCode = bucket.HashCode &&
-           EqualityComparer.Default.Equals (key, bucket.Key) then
-            bucket.Value
-
-        elif bucket.IsLast then
-            raise (KeyNotFoundException())
-
-        else
-            let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
-            loop hashCode key nextBucketIdx
-
-
-    let getRefValue
-        (internals: inref<Internals<'Key,_>>)
-        (key: 'Key)
-        =
-
-        let buckets = internals.Buckets
-        let wrapAroundMask = internals.WrapAroundMask
-        let bucketBitShift = internals.BucketBitShift
-        let comparer = internals.Comparer
-
-        let computeBucketIndex (hashCode: int) =
-            let hashProduct = (uint hashCode) * 2654435769u
-            int (hashProduct >>> bucketBitShift)
-
-        let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
+            let hashCode = comparer.GetHashCode key
+            let bucketIdx = computeBucketIndex bucketBitShift hashCode
             let bucket = buckets[bucketIdx]
 
             if hashCode = bucket.HashCode &&
@@ -439,21 +444,16 @@ module private Helpers =
                 let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
                 loop hashCode key nextBucketIdx
 
-        let hashCode = comparer.GetHashCode key
-        let bucketIdx = computeBucketIndex hashCode
-        let bucket = buckets[bucketIdx]
 
-        if hashCode = bucket.HashCode &&
-           comparer.Equals (key, bucket.Key) then
-            bucket.Value
 
-        elif bucket.IsLast then
-            raise (KeyNotFoundException())
+    let addEntry (internals: byref<Internals<_,_>>) (key: 'Key) (value: 'Value) =
 
+        if typeof<'Key>.IsValueType then
+            let hashCode = EqualityComparer.Default.GetHashCode key
+            Struct.addEntry &internals hashCode key value
         else
-            let nextBucketIdx = (bucketIdx + (int bucket.Next)) &&& wrapAroundMask
-            loop hashCode key nextBucketIdx
-
+            let hashCode = internals.Comparer.GetHashCode key
+            Ref.addEntry &internals hashCode key value
 
     // Increase the size of the backing array if the max fill percent has been reached
     // and migrate all of the entries.
@@ -491,9 +491,11 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     new () = Dictionary<'Key, 'Value>([])
 
+    member b.InternalsByRef = &internals
+
     member d.Item
-        with get (key: 'Key) =
+        with inline get (key: 'Key) =
             if typeof<'Key>.IsValueType then
-                getStructValue &internals key
+                Struct.getValue &d.InternalsByRef key
             else
-                getRefValue &internals key
+                Ref.getValue &d.InternalsByRef key
