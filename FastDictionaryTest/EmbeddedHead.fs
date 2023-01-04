@@ -89,7 +89,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Create the Buckets with some initial capacity
     let mutable buckets : StructEntry<'Key, 'Value>[] = Array.create 4 StructEntry.empty
     // BitShift necessary for mapping HashCode to SlotIdx using Fibonacci Hashing
-    let mutable bucketBitShift = 64 - (BitOperations.TrailingZeroCount buckets.Length)
+    let mutable bucketBitShift = 32 - (BitOperations.TrailingZeroCount buckets.Length)
 
     // This relies on the size of buckets being a power of 2
     let computeBucketIndex (hashCode: int) =

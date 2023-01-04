@@ -1,6 +1,7 @@
 ﻿namespace FastDictionaryTest.FibonacciHashing
 
 open System.Collections.Generic
+open System.Numerics
 
 module private Helpers =
 
@@ -19,7 +20,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Create the Buckets with some initial capacity
     let mutable buckets : list<Entry<'Key, 'Value>>[] = Array.create 4 []
     // BitShift necessary for mapping HashCode to SlotIdx using Fibonacci Hashing
-    let mutable slotBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
+    let mutable slotBitShift = 32 - (BitOperations.TrailingZeroCount buckets.Length)
 
     // This relies on the size of buckets being a power of 2
     let computeBucketIndex (key: 'Key) =

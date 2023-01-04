@@ -86,7 +86,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Create the Buckets with some initial capacity
     let mutable buckets : Bucket<'Key, 'Value>[] = Array.create 4 Bucket.empty
     // BitShift necessary for mapping HashCode to BucketIdx using Fibonacci Hashing
-    let mutable bucketBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
+    let mutable bucketBitShift = 32 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
     // Used for Wrap Around addition/subtraction of offsets
     let mutable wrapAroundMask = buckets.Length - 1
 
@@ -312,7 +312,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let getStructValue (key: 'Key) =
 
         let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
-            let bucket = buckets[bucketIdx]
+            let bucket = &buckets[bucketIdx]
 
             if hashCode = bucket.HashCode &&
                EqualityComparer.Default.Equals (key, bucket.Key) then
@@ -327,7 +327,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         let hashCode = EqualityComparer.Default.GetHashCode key
         let bucketIdx = computeBucketIndex hashCode
-        let bucket = buckets[bucketIdx]
+        let bucket = &buckets[bucketIdx]
 
         if hashCode = bucket.HashCode &&
            EqualityComparer.Default.Equals (key, bucket.Key) then
@@ -345,7 +345,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     let getRefValue (key: 'Key) =
 
         let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
-            let bucket = buckets[bucketIdx]
+            let bucket = &buckets[bucketIdx]
 
             if hashCode = bucket.HashCode &&
                refComparer.Equals (key, bucket.Key) then
@@ -360,7 +360,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
         let hashCode = refComparer.GetHashCode key
         let bucketIdx = computeBucketIndex hashCode
-        let bucket = buckets[bucketIdx]
+        let bucket = &buckets[bucketIdx]
 
         if hashCode = bucket.HashCode &&
            refComparer.Equals (key, bucket.Key) then

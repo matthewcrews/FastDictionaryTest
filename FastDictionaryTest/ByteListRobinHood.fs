@@ -86,7 +86,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
     // Create the Buckets with some initial capacity
     let mutable buckets : Bucket<'Key, 'Value>[] = Array.create 4 Bucket.empty
     // BitShift necessary for mapping HashCode to BucketIdx using Fibonacci Hashing
-    let mutable bucketBitShift = 64 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
+    let mutable bucketBitShift = 32 - (System.Numerics.BitOperations.TrailingZeroCount buckets.Length)
     // Used for Wrap Around addition/subtraction of offsets
     let mutable wrapAroundMask = buckets.Length - 1
 

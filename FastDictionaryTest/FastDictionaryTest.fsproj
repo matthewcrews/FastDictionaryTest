@@ -19,7 +19,7 @@
         <Compile Include="ByteList.fs" />
         <Compile Include="ByteListRobinHood.fs" />
         <Compile Include="ByteListRobinHoodInline.fs" />
-        <Compile Include="FastByte.fs" />
+        <Compile Include="CStyle.fs" />
         <Compile Include="ByteListRobinHoodVec128.fs" />
     </ItemGroup>
 

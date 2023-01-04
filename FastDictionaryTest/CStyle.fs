@@ -1,4 +1,4 @@
-﻿namespace FastDictionaryTest.FastByte
+﻿namespace FastDictionaryTest.CStyle
 
 open System
 open System.Numerics
@@ -32,6 +32,7 @@ module Helpers =
         member s.IsOccupied = s.Next <= Next.tombstone
         member s.IsAvailable = s.Next >= Next.tombstone
         member s.IsLast = s.Next = Next.last
+
 
     module Bucket =
 
@@ -93,7 +94,7 @@ module Helpers =
             {
                 Count = 0
                 Buckets = Array.create initialLength Bucket.empty
-                BucketBitShift = 64 - (BitOperations.TrailingZeroCount initialLength)
+                BucketBitShift = 32 - (BitOperations.TrailingZeroCount initialLength)
                 WrapAroundMask = initialLength - 1
                 Comparer = refComparer
             }
@@ -267,7 +268,7 @@ module Helpers =
             let bucketBitShift = internals.BucketBitShift
 
             let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
-                let bucket = buckets[bucketIdx]
+                let bucket : inref<Bucket<_,_>> = &buckets[bucketIdx]
 
                 if hashCode = bucket.HashCode &&
                    EqualityComparer.Default.Equals (key, bucket.Key) then
@@ -282,7 +283,7 @@ module Helpers =
 
             let hashCode = EqualityComparer.Default.GetHashCode key
             let bucketIdx = computeBucketIndex bucketBitShift hashCode
-            let bucket = buckets[bucketIdx]
+            let bucket : inref<Bucket<_,_>> = &buckets[bucketIdx]
 
             if hashCode = bucket.HashCode &&
                EqualityComparer.Default.Equals (key, bucket.Key) then
@@ -416,7 +417,7 @@ module Helpers =
             let comparer = internals.Comparer
 
             let rec loop (hashCode: int) (key: 'Key) (bucketIdx: int) =
-                let bucket = buckets[bucketIdx]
+                let bucket : inref<Bucket<_,_>> = &buckets[bucketIdx]
 
                 if hashCode = bucket.HashCode &&
                    comparer.Equals (key, bucket.Key) then
@@ -431,7 +432,7 @@ module Helpers =
 
             let hashCode = comparer.GetHashCode key
             let bucketIdx = computeBucketIndex bucketBitShift hashCode
-            let bucket = buckets[bucketIdx]
+            let bucket : inref<Bucket<_,_>> = &buckets[bucketIdx]
 
             if hashCode = bucket.HashCode &&
                comparer.Equals (key, bucket.Key) then
@@ -466,7 +467,7 @@ module Helpers =
 
             // Increase the size of the backing store
             internals.Buckets <- Array.create (internals.Buckets.Length <<< 1) Bucket.empty
-            internals.BucketBitShift <- 64 - (BitOperations.TrailingZeroCount internals.Buckets.Length)
+            internals.BucketBitShift <- 32 - (BitOperations.TrailingZeroCount internals.Buckets.Length)
             internals.WrapAroundMask <- internals.Buckets.Length - 1
             internals.Count <- 0
 

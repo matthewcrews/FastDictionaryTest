@@ -85,6 +85,11 @@ let profile (version: string) loopCount =
         for i in 1 .. loopCount do
             result <- b.Test()
 
+    | "cstyle" ->
+        let b = CStyle()
+        for i in 1 .. loopCount do
+            result <- b.Test()
+
     | "bytelistrobinhoodvec128" ->
         let b = ByteListRobinHoodVec128()
         for i in 1 .. loopCount do
@@ -160,12 +165,12 @@ let main argv =
             let _ = BenchmarkRunner.Run<ByteListRobinHoodInline>()
             ()
 
-        | "bytelistrobinhoodvec128" ->
-            let _ = BenchmarkRunner.Run<ByteListRobinHoodVec128>()
+        | "cstyle" ->
+            let _ = BenchmarkRunner.Run<CStyle>()
             ()
 
-        | "fastbyte" ->
-            let _ = BenchmarkRunner.Run<FastByte>()
+        | "bytelistrobinhoodvec128" ->
+            let _ = BenchmarkRunner.Run<ByteListRobinHoodVec128>()
             ()
 
         | unknownSuite ->

@@ -12,7 +12,7 @@ open FastDictionaryTest.Benchmark.Domain
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
 [<DisassemblyDiagnoser(filters=[||])>]
-type FastByte () =
+type CStyle () =
 
     let intDictionaries =
         [| for countKey, _ in valueCounts ->
@@ -36,7 +36,7 @@ type FastByte () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 intDataSets[int countKey][testKey]
-                |> FastByte.Dictionary
+                |> CStyle.Dictionary
             |]
         |]
 
@@ -44,7 +44,7 @@ type FastByte () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 strDataSets[int countKey][testKey]
-                |> FastByte.Dictionary
+                |> CStyle.Dictionary
             |]
         |]
 
