@@ -1,7 +1,6 @@
 ﻿namespace FastDictionaryTest.EmbeddedHead
 
 open System
-open System.Net.Cache
 open System.Numerics
 open Microsoft.FSharp.NativeInterop
 open System.Collections.Generic
@@ -116,7 +115,13 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         let bucketIdx = computeBucketIndex hashCode
         let sEntry = &buckets[bucketIdx]
 
-        if sEntry.HashCode = hashCode &&
+        if sEntry.HashCode = HashCode.empty then
+            sEntry.HashCode <- hashCode
+            sEntry.Key <- key
+            sEntry.Value <- value
+            count <- count + 1
+
+        elif sEntry.HashCode = hashCode &&
            EqualityComparer.Default.Equals (sEntry.Key, key) then
 
             sEntry.Value <- value
@@ -147,7 +152,13 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
         let bucketIdx = computeBucketIndex hashCode
         let sEntry = &buckets[bucketIdx]
 
-        if sEntry.HashCode = hashCode &&
+        if sEntry.HashCode = HashCode.empty then
+            sEntry.HashCode <- hashCode
+            sEntry.Key <- key
+            sEntry.Value <- value
+            count <- count + 1
+
+        elif sEntry.HashCode = hashCode &&
            refComparer.Equals (sEntry.Key, key) then
 
             sEntry.Value <- value
@@ -199,7 +210,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     let getRefValue (key: 'Key) =
 
-
         let rec refLoop (hashCode: int) (rEntry: RefEntry<'Key, 'Value>) =
             if rEntry.HashCode = hashCode &&
                refComparer.Equals (rEntry.Key, key) then
@@ -232,7 +242,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             // Increase the size of the backing store
             buckets <- Array.create (buckets.Length <<< 1) StructEntry.empty
-            bucketBitShift <- 64 - (BitOperations.TrailingZeroCount buckets.Length)
+            bucketBitShift <- 32 - (BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
 
             let rec refLoop (rEntry: RefEntry<'Key, 'Value>) =
@@ -241,9 +251,10 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                     refLoop rEntry.Tail
 
             for sEntry in oldBuckets do
-                addEntry sEntry.Key sEntry.Value
-                if not (obj.ReferenceEquals (sEntry.Tail, null)) then
-                    refLoop sEntry.Tail
+                if not (sEntry.HashCode = HashCode.empty) then
+                    addEntry sEntry.Key sEntry.Value
+                    if not (obj.ReferenceEquals (sEntry.Tail, null)) then
+                        refLoop sEntry.Tail
 
 
     do

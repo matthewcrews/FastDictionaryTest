@@ -172,7 +172,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             // Increase the size of the backing store
             buckets <- Array.create (buckets.Length <<< 1) []
-            bucketBitShift <- 64 - (BitOperations.TrailingZeroCount buckets.Length)
+            bucketBitShift <- 32 - (BitOperations.TrailingZeroCount buckets.Length)
             count <- 0
 
             for bucket in oldBuckets do

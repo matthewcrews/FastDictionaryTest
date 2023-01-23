@@ -114,7 +114,6 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 // Start over looking from the beginning of the buckets
                 loop hashCode 0
 
-
         let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
         loop hashCode bucketIdx
@@ -158,9 +157,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     // Use the stored refComparer to reduce overhead in creating new instances
     let getStructValue (key: 'Key) =
-        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (bucketIdx: int) =
+        let rec loop hashCode (bucketIdx: int) =
             // Make sure that we have not gone past the end of the backing array.
             // If we have we will want to continue our loop from the beginning of the array.
             if bucketIdx < buckets.Length then
@@ -172,7 +170,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
                 // If the Bucket is occupied then we want to move to the next Entry
                 elif buckets[bucketIdx].IsOccupied then
-                    loop (bucketIdx + 1)
+                    loop hashCode (bucketIdx + 1)
 
                 // If the Bucket is empty then we have failed to find the Key we
                 // were searching for
@@ -181,34 +179,35 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
             else
                 // Loop around to the begging of the array
-                loop 0
+                loop hashCode 0
 
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
-        loop bucketIdx
+        loop hashCode bucketIdx
 
 
     // Use the default GetHashCode to enable the inlining of code for the JIT
     let getRefValue (key: 'Key) =
-        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (bucketIdx: int) =
+        let rec loop hashCode (bucketIdx: int) =
             if bucketIdx < buckets.Length then
                 if hashCode = buckets[bucketIdx].HashCode &&
                    refComparer.Equals (key, buckets[bucketIdx].Key) then
                         buckets[bucketIdx].Value
 
                 elif buckets[bucketIdx].IsOccupied then
-                    loop (bucketIdx + 1)
+                    loop hashCode (bucketIdx + 1)
 
                 else
                     raise (KeyNotFoundException())
 
             else
                 // Loop around to the begging of the array
-                loop 0
+                loop hashCode 0
 
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
-        loop bucketIdx
+        loop hashCode bucketIdx
 
 
     let resize () =
