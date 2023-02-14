@@ -96,9 +96,8 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
 
     let rec addStructEntry (key: 'Key) (value: 'Value) =
-        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (offset: int) (bucketIdx: int) =
+        let rec loop hashCode (offset: int) (bucketIdx: int) =
             if bucketIdx < buckets.Length then
                 let bucket = &buckets[bucketIdx]
                 // Check if bucket is Empty or a Tombstone
@@ -125,19 +124,19 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                         bucket.Value <- value
                         addStructEntry prevKey prevValue
                     else
-                        loop (offset + 1) (bucketIdx + 1)
+                        loop hashCode (offset + 1) (bucketIdx + 1)
             else
                 // Start over looking from the beginning of the buckets
-                loop (offset + 1) 0
+                loop hashCode (offset + 1) 0
 
+        let hashCode = EqualityComparer.Default.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
-        loop 0 bucketIdx
+        loop hashCode 0 bucketIdx
 
 
     let rec addRefEntry (key: 'Key) (value: 'Value) =
-        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
 
-        let rec loop (offset: int) (bucketIdx: int) =
+        let rec loop hashCode (offset: int) (bucketIdx: int) =
             if bucketIdx < buckets.Length then
                 let bucket = &buckets[bucketIdx]
                 // Check if bucket is Empty or a Tombstone
@@ -164,13 +163,14 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                         bucket.Value <- value
                         addRefEntry prevKey prevValue
                     else
-                        loop (offset + 1) (bucketIdx + 1)
+                        loop hashCode (offset + 1) (bucketIdx + 1)
             else
                 // Start over looking from the beginning of the buckets
-                loop (offset + 1) 0
+                loop hashCode (offset + 1) 0
 
+        let hashCode = refComparer.GetHashCode key &&& POSITIVE_INT_MASK
         let bucketIdx = computeBucketIndex hashCode
-        loop 0 bucketIdx
+        loop hashCode 0 bucketIdx
 
 
     let addEntry (key: 'Key) (value: 'Value) =
