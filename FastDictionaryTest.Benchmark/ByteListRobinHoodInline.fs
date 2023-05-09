@@ -88,7 +88,7 @@ type ByteListRobinHoodInline () =
 
         if b.KeyType = KeyType.Int then
             let mutable acc = 0
-            let dataSet = intFrozenDictionaries[int b.KeyCount]
+            let dataSet = intDictionaries[int b.KeyCount]
             let keySet = intKeySets[int b.KeyCount]
 
             for testKey in 0 .. testCount - 1 do
@@ -102,7 +102,7 @@ type ByteListRobinHoodInline () =
 
         else
             let mutable acc = 0
-            let dataSet = strFrozenDictionaries[int b.KeyCount]
+            let dataSet = strDictionaries[int b.KeyCount]
             let keySet = strKeySets[int b.KeyCount]
 
             for testKey in 0 .. testCount - 1 do
