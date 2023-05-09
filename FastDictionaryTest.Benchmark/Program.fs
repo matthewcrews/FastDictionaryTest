@@ -81,7 +81,7 @@ let profile (version: string) loopCount =
             result <- b.Test()
 
     | "bytelistrobinhoodinline" ->
-        let b = ByteListRobinHood()
+        let b = ByteListRobinHoodInline()
         for i in 1 .. loopCount do
             result <- b.Test()
 

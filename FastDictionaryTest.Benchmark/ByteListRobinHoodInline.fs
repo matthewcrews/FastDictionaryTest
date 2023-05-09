@@ -1,9 +1,11 @@
 ﻿namespace FastDictionaryTest.Benchmark
 
 
+open System.Collections.Frozen
 open System.Collections.Generic
 open BenchmarkDotNet.Diagnosers
 open BenchmarkDotNet.Attributes
+open BenchmarkDotNet.Jobs
 open FastDictionaryTest
 open FastDictionaryTest.Benchmark.Domain
 
@@ -29,6 +31,27 @@ type ByteListRobinHoodInline () =
                 strDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
+            |]
+        |]
+
+
+    let intFrozenDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                intDataSets[int countKey][testKey]
+                |> Array.map KeyValuePair
+                |> Dictionary
+                |> FrozenDictionary.ToFrozenDictionary
+            |]
+        |]
+
+    let strFrozenDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                strDataSets[int countKey][testKey]
+                |> Array.map KeyValuePair
+                |> Dictionary
+                |> FrozenDictionary.ToFrozenDictionary
             |]
         |]
 
@@ -65,7 +88,7 @@ type ByteListRobinHoodInline () =
 
         if b.KeyType = KeyType.Int then
             let mutable acc = 0
-            let dataSet = intDictionaries[int b.KeyCount]
+            let dataSet = intFrozenDictionaries[int b.KeyCount]
             let keySet = intKeySets[int b.KeyCount]
 
             for testKey in 0 .. testCount - 1 do
@@ -79,7 +102,38 @@ type ByteListRobinHoodInline () =
 
         else
             let mutable acc = 0
-            let dataSet = strDictionaries[int b.KeyCount]
+            let dataSet = strFrozenDictionaries[int b.KeyCount]
+            let keySet = strKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+    [<Benchmark(Description = "Frozen Dictionary")>]
+    member b.FrozenDictionary () =
+
+        if b.KeyType = KeyType.Int then
+            let mutable acc = 0
+            let dataSet = intFrozenDictionaries[int b.KeyCount]
+            let keySet = intKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+        else
+            let mutable acc = 0
+            let dataSet = strFrozenDictionaries[int b.KeyCount]
             let keySet = strKeySets[int b.KeyCount]
 
             for testKey in 0 .. testCount - 1 do
