@@ -41,7 +41,7 @@ type ByteListRobinHoodInline () =
                 intDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> FrozenDictionary.ToFrozenDictionary
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
             |]
         |]
 
@@ -51,7 +51,7 @@ type ByteListRobinHoodInline () =
                 strDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> FrozenDictionary.ToFrozenDictionary
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
             |]
         |]
 
@@ -146,7 +146,7 @@ type ByteListRobinHoodInline () =
             acc
 
 
-    [<Benchmark(Description = "ByteList RobinHood Inline")>]
+    [<Benchmark(Description = "Static Dict")>]
     member b.Test () =
 
         if b.KeyType = KeyType.Int then
