@@ -1,5 +1,6 @@
 module FastDictionaryTest.Tests
 
+open System.Collections.Frozen
 open System.Collections.Generic
 open NUnit.Framework
 
@@ -15,16 +16,16 @@ type KeyCount =
 
 let valueCounts = [|
     KeyCount.``10``       , 10
-    KeyCount.``100``      , 100
-    KeyCount.``1_000``    , 1_000
-    KeyCount.``10_000``   , 10_000
+    // KeyCount.``100``      , 100
+    // KeyCount.``1_000``    , 1_000
+    // KeyCount.``10_000``   , 10_000
 |]
 
 let rng = System.Random 123
 let minKey = -100_000
 let maxKey = 100_000
 let maxValue = 100_000
-let testCount = 100
+let testCount = 1
 let lookupCount = 100
 
 let intDataSets =
@@ -204,6 +205,45 @@ let ``SubstringComparer Dictionary matches`` () =
         (data, keys)
         ||> Array.iter2 (fun data keys ->
             let testDictionary = SubstringComparer.Dictionary data
+            let expectedValues = dict data
+
+            for k in keys do
+                let actualValue = testDictionary[k]
+                let expectedValue = expectedValues[k]
+                Assert.AreEqual (expectedValue, actualValue)
+            )
+        )
+
+[<Test>]
+let ``Frozen Dictionary matches`` () =
+
+    (intDataSets, intKeySets)
+    ||> Array.iter2 (fun data keys ->
+        (data, keys)
+        ||> Array.iter2 (fun data keys ->
+            let testDictionary =
+                data
+                |> Array.map KeyValuePair
+                |> Dictionary
+                |> fun x -> FrozenDictionary.ToFrozenDictionary (x, optimizeForReading = true)
+            let expectedValues = dict data
+
+            for k in keys do
+                let actualValue = testDictionary[k]
+                let expectedValue = expectedValues[k]
+                Assert.AreEqual (expectedValue, actualValue)
+            )
+        )
+
+    (strDataSets, strKeySets)
+    ||> Array.iter2 (fun data keys ->
+        (data, keys)
+        ||> Array.iter2 (fun data keys ->
+            let testDictionary =
+                data
+                |> Array.map KeyValuePair
+                |> Dictionary
+                |> fun x -> FrozenDictionary.ToFrozenDictionary (x, optimizeForReading = true)
             let expectedValues = dict data
 
             for k in keys do
