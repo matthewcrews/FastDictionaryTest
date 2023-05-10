@@ -21,6 +21,7 @@
         <Compile Include="ByteList.fs" />
         <Compile Include="ByteListRobinHood.fs" />
         <Compile Include="ByteListRobinHoodInline.fs" />
+        <Compile Include="SubstringComparer.fs" />
         <Compile Include="CStyle.fs" />
         <Compile Include="ByteListRobinHoodVec128.fs" />
         <!--        <Compile Include="Benchmarks.fs" />-->

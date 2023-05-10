@@ -165,6 +165,10 @@ let main argv =
             let _ = BenchmarkRunner.Run<ByteListRobinHoodInline>()
             ()
 
+        | "substringcomparer" ->
+            let _ = BenchmarkRunner.Run<SubstringComparer>()
+            ()
+
         | "cstyle" ->
             let _ = BenchmarkRunner.Run<CStyle>()
             ()

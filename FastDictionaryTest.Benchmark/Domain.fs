@@ -20,9 +20,9 @@ let valueCounts = [|
 |]
 
 let rng = System.Random 123
-let minKey = 0
+let minKey = -100_000
 let maxKey = 100_000
-let maxValue = 1_000
+let maxValue = 100_000
 let testCount = 100
 let lookupCount = 100
 
