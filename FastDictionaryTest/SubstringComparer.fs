@@ -139,16 +139,20 @@ module private Helpers =
             member _.GetHashCode (a: string) =
                 use ptr = fixed a
                 let mutable ptr : nativeptr<UInt64> = retype ptr
-                let mutable h = (5381UL <<< 16) + 5381UL
+                let mutable hash1 = (5381UL <<< 16) + 5381UL
+                let mutable hash2 = hash1
                 let mutable length = a.Length
 
                 while length > 0 do
-                    h <- 31UL * h + NativePtr.get ptr 0
-                    ptr <- NativePtr.add ptr 1
+                    hash1 <- 31UL * hash1 * NativePtr.get ptr 0
+                    hash2 <- 31UL * hash2 * NativePtr.get ptr 1
+                    ptr <- NativePtr.add ptr 2
+                    length <- length - 8
 
-                    length <- length - 4
+                if length > 0 then
+                    hash2 <- 31UL * hash2 * NativePtr.get ptr 0
 
-                int h
+                int (hash1 + (hash2 * 1566083941UL))
 
 
                 // let mutable hash1 = (5381u <<< 16) + 5381u
