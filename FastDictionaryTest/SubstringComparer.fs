@@ -256,7 +256,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
 
     let rec addStructEntry (hashCode: int) (key: 'Key) (value: 'Value) =
 
-        let rec insertIntoNextEmptyBucket (parentIdx: int, hashCode: int, key: 'Key, value: 'Value, offset: byte, bucketIdx: int) =
+        let rec insertIntoNextEmptyBucket (parentIdx: int) (hashCode: int) (key: 'Key) (value: 'Value) (offset: byte) (bucketIdx: int) =
             if bucketIdx < keys.Length then
                 if Next.isAvailable nexts[bucketIdx] then
                     setBucket Next.last hashCode key value bucketIdx
@@ -276,10 +276,10 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
                 else
                     let newOffset = offset + 1uy
                     let newBucketIdx = bucketIdx + 1
-                    insertIntoNextEmptyBucket (parentIdx, hashCode, key, value, newOffset, newBucketIdx)
+                    insertIntoNextEmptyBucket parentIdx hashCode key value newOffset newBucketIdx
 
             else
-                insertIntoNextEmptyBucket (parentIdx, hashCode, key, value, offset, 0)
+                insertIntoNextEmptyBucket parentIdx hashCode key value offset 0
 
 
         let rec listSearch (hashCode: int) (key: 'Key) (value: 'Value) (bucketIdx: int) =
@@ -294,7 +294,7 @@ type Dictionary<'Key, 'Value when 'Key : equality> (entries: seq<'Key * 'Value>)
             // to add our new Key/Value and update the offset for the previous Last entry.
             elif Next.isLast nexts[bucketIdx] then
 
-                insertIntoNextEmptyBucket (bucketIdx, hashCode, key, value, 1uy, (bucketIdx + 1))
+                insertIntoNextEmptyBucket bucketIdx hashCode key value 1uy (bucketIdx + 1)
 
             // We are not at the end of the list so we compute the next BucketIdx and move
             // to the next Entry. We use a wrap around mask to ensure we don't go outside
