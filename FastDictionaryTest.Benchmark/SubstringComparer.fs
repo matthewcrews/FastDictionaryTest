@@ -84,7 +84,7 @@ type SubstringComparer () =
     member val KeyCount = KeyCount.``10`` with get, set
 
 
-    // [<Benchmark(Description = "Dictionary")>]
+    [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
 
         if b.KeyType = KeyType.Int then
@@ -115,7 +115,7 @@ type SubstringComparer () =
 
             acc
 
-    // [<Benchmark(Description = "Frozen Dictionary")>]
+    [<Benchmark(Description = "Frozen Dictionary")>]
     member b.FrozenDictionary () =
 
         if b.KeyType = KeyType.Int then

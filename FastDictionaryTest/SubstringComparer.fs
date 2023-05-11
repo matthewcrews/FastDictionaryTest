@@ -26,157 +26,124 @@ module private Helpers =
         let isAvailable next = next >= tombstone
         let isLast      next = next = last
 
-    [<Struct>]
-    type Bucket<'Key, 'Value> =
-        {
-            mutable HashCode : int
-            mutable Next : byte
-            mutable Key : 'Key
-            mutable Value : 'Value
-        }
-        member s.IsTombstone = s.Next = Next.tombstone
-        member s.IsEmpty = s.Next = Next.empty
-        member s.IsEntry = s.Next < Next.tombstone
-        member s.IsOccupied = s.Next <= Next.tombstone
-        member s.IsAvailable = s.Next >= Next.tombstone
-        member s.IsLast = s.Next = Next.last
-
-    module Bucket =
-
-        let empty<'Key, 'Value> =
-            {
-                HashCode = Unchecked.defaultof<int>
-                Next = Next.empty
-                Key = Unchecked.defaultof<'Key>
-                Value = Unchecked.defaultof<'Value>
-            }
-
-    let calculateStringIntervals (entries: seq<'Key * 'Value>) =
-        let acc = HashSet()
-
-        let calculateUniquenessFactor (start: int) (length: int) (strings: HashSet<string>) =
-            acc.Clear()
-
-            for str in strings do
-                let strSpan = str.AsSpan (start, length)
-                let str = String strSpan
-                acc.Add str
-                |> ignore
-
-            float acc.Count / (float strings.Count)
-
-        let isNonUniqueTest (start: int) (length: int) (strings: HashSet<string>) =
-            acc.Clear()
-
-            for str in strings do
-                let strSpan = str.AsSpan (start, length)
-                let str = String strSpan
-                acc.Add str
-                |> ignore
-
-            acc.Count < strings.Count
-
-
-        let uniqueStrings = HashSet()
-        let mutable minLength = Int32.MaxValue
-        for key, _ in entries do
-            match box key with
-            | :? String as strKey ->
-                let strSpan = strKey.AsSpan()
-                if strSpan.Length < minLength then
-                    minLength <- strSpan.Length
-                uniqueStrings.Add strKey |> ignore
-            | _ -> ()
-
-        // Analyze for which substring provides unique Hashing and Equality
-        let minUniquenessFactor = 0.95
-        let mutable uniqueness = 0.0
-        let mutable hashIndex = 0
-        let mutable hashLength = 0
-
-        while uniqueness < minUniquenessFactor && hashLength < minLength do
-            hashLength <- hashLength + 1
-            hashIndex <- 0
-
-            while uniqueness < minUniquenessFactor &&
-                  hashIndex + hashLength < minLength do
-
-                uniqueness <- calculateUniquenessFactor hashIndex hashLength uniqueStrings
-                if uniqueness < minUniquenessFactor then
-                    hashIndex <- hashIndex + 1
-
-
-        // let mutable isNonUnique = true
-        // let mutable equalityIndex = 0
-        // let mutable equalityLength = 0
-        //
-        // // Equality must be completely unique
-        // while isNonUnique do
-        //     equalityLength <- equalityLength + 1
-        //     equalityIndex <- 0
-        //
-        //     while isNonUnique && (equalityIndex + equalityLength < minLength) do
-        //
-        //         if equalityLength < 0 || equalityIndex < 0 then
-        //
-        //             printfn $"Start: {equalityIndex} Length: {equalityLength}"
-        //             printfn "Entries"
-        //             for str, value in entries do
-        //                 printfn $"{str}, {value}"
-        //
-        //             printfn "Unique string"
-        //             for str in uniqueStrings do
-        //                 printfn $"{str}"
-        //
-        //         isNonUnique <- isNonUniqueTest equalityIndex equalityLength uniqueStrings
-        //         if isNonUnique then
-        //             equalityIndex <- equalityIndex + 1
-        //         else
-        //             ()
-
-        // equalityIndex, equalityLength, hashIndex, hashLength
-        hashIndex, hashLength
 
     let createStringComparer (entries: seq<'Key * 'Value>) =
-        let hashIndex, hashLength = calculateStringIntervals entries
+        let inline stringEquals (a: string, b: string) =
+            use ptrA = fixed a
+            use ptrB = fixed b
+            let mutable ptrA : nativeptr<UInt64> = retype ptrA
+            let mutable ptrB : nativeptr<UInt64> = retype ptrB
+            let mutable length = a.Length
+            let mutable isEqual = true
+
+            while length > 3 && isEqual do
+                isEqual <- NativePtr.read ptrA = NativePtr.read ptrB
+                // These are stepping by 8 bytes at a time
+                ptrA <- NativePtr.add ptrA 1
+                ptrB <- NativePtr.add ptrB 1
+                // Length is in terms of 16 bits
+                length <- length - 4
+
+            // We now need to move by 16-bits at a time
+            let mutable ptrA : nativeptr<UInt16> = retype ptrA
+            let mutable ptrB : nativeptr<UInt16> = retype ptrB
+
+            while length > 0 && isEqual do
+                isEqual <- NativePtr.read ptrA = NativePtr.read ptrB
+                // These are stepping by 8 bytes at a time
+                ptrA <- NativePtr.add ptrA 1
+                ptrB <- NativePtr.add ptrB 1
+                length <- length - 1
+
+            isEqual
+        //
+        //
+        // { new IEqualityComparer<string> with
+        //     member _.Equals (a: string, b: string) =
+        //         a.Length = b.Length && stringEquals (a, b)
+        //
+        //     member _.GetHashCode (a: string) =
+        //         use ptr = fixed a
+        //         let mutable ptr : nativeptr<UInt64> = retype ptr
+        //         let mutable h = (5381UL <<< 16) + 5381UL
+        //         let mutable length = a.Length
+        //
+        //         while length > 3 do
+        //             h <- 31UL * h * NativePtr.read ptr
+        //             ptr <- NativePtr.add ptr 1
+        //             length <- length - 4
+        //
+        //         int h
+        // }
+        //
         { new IEqualityComparer<string> with
             member _.Equals (a: string, b: string) =
                 a.AsSpan().SequenceEqual(b.AsSpan())
 
             member _.GetHashCode (a: string) =
-                use ptr = fixed a
-                let mutable ptr : nativeptr<UInt64> = retype ptr
+                let charSpan = a.AsSpan()
+                // let mutable h = (5381 <<< 16) + 5381
+                // let mutable i = 0
+                // while i + 3 < charSpan.Length do
+                //     h <- 31*31*31*31*h +
+                //          31*31*31* int charSpan[i] +
+                //          31*31* int charSpan[i + 1] +
+                //          31* int charSpan[i + 2] +
+                //          int charSpan[i + 3]
+                //     i <- i + 4
+                //
+                // while i < charSpan.Length do
+                //     h <- 31 * h + int charSpan[i]
+                //     i <- i + 1
+                //
+                // h
+
+
                 let mutable hash1 = (5381UL <<< 16) + 5381UL
                 let mutable hash2 = hash1
                 let mutable length = a.Length
 
-                while length > 0 do
-                    hash1 <- 31UL * hash1 * NativePtr.get ptr 0
-                    hash2 <- 31UL * hash2 * NativePtr.get ptr 1
-                    ptr <- NativePtr.add ptr 2
+                use ptr = fixed a
+                let mutable ptr : nativeptr<UInt64> = retype ptr
+                while length > 7 do
+                    hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr 0)
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 1)
                     length <- length - 8
+                    ptr <- NativePtr.add ptr 2
 
-                if length > 0 then
-                    hash2 <- 31UL * hash2 * NativePtr.get ptr 0
+                let mutable ptr : nativeptr<UInt32> = retype ptr
+                while length > 3 do
+                    hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ uint64 (NativePtr.get ptr 0)
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr 1)
+                    length <- length - 4
+                    ptr <- NativePtr.add ptr 2
+
+                let mutable ptr : nativeptr<char> = retype ptr
+                while length > 0 do
+                    hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr 1)
+                    length <- length - 4
+                    ptr <- NativePtr.add ptr 2
+
 
                 int (hash1 + (hash2 * 1566083941UL))
-
 
                 // let mutable hash1 = (5381u <<< 16) + 5381u
                 // let mutable hash2 = hash1
                 // let mutable length = a.Length
-                // use ptr = fixed a
-                // let mutable ptr : nativeptr<UInt32> = retype ptr
-                // while length > 3 do
+                //
+                // let mutable ptr : nativeptr<uint32> =
+                //     &&charSpan.GetPinnableReference()
+                //     |> retype
+                // while length > 2 do
+                //     length <- length - 4
                 //     hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr 0)
                 //     hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 1)
                 //     ptr <- NativePtr.add ptr 2
-                //     length <- length - 4
                 //
                 // if length > 0 then
                 //     hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 0)
                 //
-                // int (hash1 + (hash2 * 1_566_083_941u))
+                // int (hash1 + (hash2 * 1566083941u))
         }
 
 open Helpers

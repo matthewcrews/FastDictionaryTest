@@ -8,6 +8,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FastDictionaryTest.Tests", 
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FastDictionaryTest.Scratchpad", "FastDictionaryTest.Scratchpad\FastDictionaryTest.Scratchpad.fsproj", "{B6FB0028-6EA5-4773-A1E5-3AC1868FDFE2}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FastDictionary.Profile", "FastDictionary.Profile\FastDictionary.Profile.fsproj", "{0463C464-AC24-4184-BB99-FD0CEA41FDAC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{B6FB0028-6EA5-4773-A1E5-3AC1868FDFE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B6FB0028-6EA5-4773-A1E5-3AC1868FDFE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B6FB0028-6EA5-4773-A1E5-3AC1868FDFE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0463C464-AC24-4184-BB99-FD0CEA41FDAC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0463C464-AC24-4184-BB99-FD0CEA41FDAC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0463C464-AC24-4184-BB99-FD0CEA41FDAC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0463C464-AC24-4184-BB99-FD0CEA41FDAC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
