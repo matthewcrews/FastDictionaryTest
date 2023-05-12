@@ -55,19 +55,19 @@ type SubstringComparer () =
             |]
         |]
 
-    let intTestDictionaries =
-        [| for countKey, _ in valueCounts ->
-            [|for testKey in 0 .. testCount - 1 ->
-                intDataSets[int countKey][testKey]
-                |> SubstringComparer.Dictionary
-            |]
-        |]
+    // let intTestDictionaries =
+    //     [| for countKey, _ in valueCounts ->
+    //         [|for testKey in 0 .. testCount - 1 ->
+    //             intDataSets[int countKey][testKey]
+    //             |> SubstringComparer.Dictionary
+    //         |]
+    //     |]
 
     let strTestDictionaries =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 strDataSets[int countKey][testKey]
-                |> SubstringComparer.Dictionary
+                |> SubstringComparer.StrDictionary.create
             |]
         |]
 
@@ -84,7 +84,7 @@ type SubstringComparer () =
     member val KeyCount = KeyCount.``10`` with get, set
 
 
-    [<Benchmark(Description = "Dictionary")>]
+    // [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
 
         if b.KeyType = KeyType.Int then
@@ -151,18 +151,19 @@ type SubstringComparer () =
     member b.Test () =
 
         if b.KeyType = KeyType.Int then
-            let mutable acc = 0
-            let dataSet = intTestDictionaries[int b.KeyCount]
-            let keySet = intKeySets[int b.KeyCount]
-
-            for testKey in 0 .. testCount - 1 do
-                let data = dataSet[testKey]
-                let keys = keySet[testKey]
-
-                for k in keys do
-                    acc <- acc + data[k]
-
-            acc
+            // let mutable acc = 0
+            // let dataSet = intTestDictionaries[int b.KeyCount]
+            // let keySet = intKeySets[int b.KeyCount]
+            //
+            // for testKey in 0 .. testCount - 1 do
+            //     let data = dataSet[testKey]
+            //     let keys = keySet[testKey]
+            //
+            //     for k in keys do
+            //         acc <- acc + data[k]
+            //
+            // acc
+            1
 
         else
             let mutable acc = 0
