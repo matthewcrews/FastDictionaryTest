@@ -204,7 +204,7 @@ let ``SubstringComparer Dictionary matches`` () =
     ||> Array.iter2 (fun data keys ->
         (data, keys)
         ||> Array.iter2 (fun data keys ->
-            let testDictionary = SubstringComparer.Dictionary data
+            let testDictionary = SubstringComparer.StrDictionary.create data
             let expectedValues = dict data
 
             for k in keys do
