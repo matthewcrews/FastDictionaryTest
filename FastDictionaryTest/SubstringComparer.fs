@@ -31,12 +31,12 @@ module private Helpers =
 
 
     [<Struct>]
-    type Data<'Key, 'Value when 'Key : equality> =
+    type Acc<'Key, 'Value when 'Key : equality> =
         {
             mutable Count: int
             mutable Keys: 'Key[]
             mutable Values: 'Value[]
-            mutable HashCodes: uint64[]
+            mutable HashCodes: int[]
             mutable Nexts: byte[]
             mutable BucketBitShift: int
             mutable WrapAroundMask: int
@@ -51,6 +51,61 @@ module private Helpers =
                 Nexts = Array.create 4 Next.empty
                 BucketBitShift = 32 - (BitOperations.TrailingZeroCount initialCapacity)
                 WrapAroundMask = initialCapacity - 1
+            }
+
+    [<Struct>]
+    type Range =
+        {
+            Start: int
+            Length: int
+        }
+
+    [<Struct>]
+    type Data<'Value> =
+        {
+            KeyRanges: Range[]
+            KeyChars: char[]
+            Values: 'Value[]
+            HashCodes: int[]
+            Nexts: byte[]
+            BucketBitShift: int
+            WrapAroundMask: int
+        }
+        static member ofAcc (acc: Acc<string, 'Value>) =
+            let keyChars =
+                acc.Keys
+                |> Array.collect (fun strKey ->
+                    if obj.ReferenceEquals (strKey, null) then
+                        [||]
+                    else
+                        strKey.ToCharArray())
+
+            let mutable i = 0
+
+            let keyRanges =
+                acc.Keys
+                |> Array.map (fun strKey ->
+                    let nextStart = i
+                    if obj.ReferenceEquals (strKey, null) then
+                        {
+                            Start = nextStart
+                            Length = 0
+                        }
+                    else
+                        i <- i + strKey.Length
+                        {
+                            Start = nextStart
+                            Length = strKey.Length
+                        })
+
+            {
+                KeyRanges = keyRanges
+                KeyChars = keyChars
+                Values = acc.Values
+                HashCodes = acc.HashCodes
+                Nexts = acc.Nexts
+                BucketBitShift = acc.BucketBitShift
+                WrapAroundMask = acc.WrapAroundMask
             }
 
 open Helpers
@@ -267,15 +322,17 @@ type ValueDictionary<'Key, 'Value when 'Key : equality>(entries: seq<'Key * 'Val
 
 
 
+
 module StrDictionary =
+
 
     module private rec Helpers =
 
         let strEquals (a: string, b: string) =
             a.AsSpan().SequenceEqual(b.AsSpan())
 
-        let strHashCode (a: string) : uint64 =
-            let mutable hash1 = (5381UL <<< 16) + 5381UL
+        let strHashCode (a: string) : int =
+            let mutable hash1 = (5381u <<< 16) + 5381u
             let mutable hash2 = hash1
             let mutable length = a.Length
 
@@ -290,31 +347,31 @@ module StrDictionary =
 
             let mutable ptr32 : nativeptr<UInt32> = retype ptr
             while length > 3 do
-                hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ uint64 (NativePtr.get ptr32 0)
-                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr32 1)
+                hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ uint (NativePtr.get ptr32 0)
+                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint (NativePtr.get ptr32 1)
                 length <- length - 4
                 ptr32 <- NativePtr.add ptr32 2
 
             let mutable ptr16 : nativeptr<char> = retype ptr32
             while length > 0 do
-                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr16 0)
+                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint (NativePtr.get ptr16 0)
                 length <- length - 1
                 ptr16 <- NativePtr.add ptr16 1
 
 
-            (hash1 + (hash2 * 1566083941UL))
+            int (hash1 + (hash2 * 1566083941u))
 
-        let computeBucketIndex (d: inref<Data<string,_>>) (hashCode: uint64) =
+        let computeBucketIndex bucketBitShift (hashCode: int) =
             let hashProduct = (uint hashCode) * 2654435769u
-            int (hashProduct >>> d.BucketBitShift)
+            int (hashProduct >>> bucketBitShift)
 
 
-        let isTail (d: inref<Data<string,_>>) (bucketIdx: int) =
-            let homeIdx = computeBucketIndex &d d.HashCodes[bucketIdx]
+        let isTail (d: inref<Acc<string,_>>) (bucketIdx: int) =
+            let homeIdx = computeBucketIndex d.BucketBitShift d.HashCodes[bucketIdx]
             bucketIdx <> homeIdx
 
 
-        let getParentBucketIdxLoop (d: inref<Data<string, _>>) (childBucketIdx: int) (ancestorIdx: int) =
+        let getParentBucketIdxLoop (d: inref<Acc<string, _>>) (childBucketIdx: int) (ancestorIdx: int) =
             let nextIdx = (ancestorIdx + int d.Nexts[ancestorIdx]) &&& d.WrapAroundMask
             if nextIdx = childBucketIdx then
                 ancestorIdx
@@ -322,24 +379,24 @@ module StrDictionary =
                 getParentBucketIdxLoop &d childBucketIdx nextIdx
 
 
-        let getParentBucketIdx (d: inref<Data<string, _>>) (hashCode: uint64) (childBucketIdx: int) =
-            let initialIdx = computeBucketIndex &d hashCode
+        let getParentBucketIdx (d: inref<Acc<string, _>>) (hashCode: int) (childBucketIdx: int) =
+            let initialIdx = computeBucketIndex d.BucketBitShift hashCode
             getParentBucketIdxLoop &d childBucketIdx initialIdx
 
 
-        let distanceFromParent (d: inref<Data<string,_>>) (bucketIdx: int) =
+        let distanceFromParent (d: inref<Acc<string,_>>) (bucketIdx: int) =
             let parentIdx = getParentBucketIdx &d d.HashCodes[bucketIdx] bucketIdx
             d.Nexts[parentIdx]
 
 
-        let setBucket (d: inref<Data<string,_>>) next hashCode key value bucketIdx =
+        let setBucket (d: inref<Acc<string,_>>) next hashCode key value bucketIdx =
             d.Nexts[bucketIdx] <- next
             d.HashCodes[bucketIdx] <- hashCode
             d.Keys[bucketIdx] <- key
             d.Values[bucketIdx] <- value
 
 
-        let removeFromList (d: inref<Data<string,_>>) (bucketIdx: int) =
+        let removeFromList (d: inref<Acc<string,_>>) (bucketIdx: int) =
             let parentBucketIdx = getParentBucketIdx &d d.HashCodes[bucketIdx] bucketIdx
 
             // If this is the Last element in a List, we just need to update the Parent's
@@ -353,7 +410,7 @@ module StrDictionary =
                 d.Nexts[parentBucketIdx] <- d.Nexts[parentBucketIdx] + d.Nexts[bucketIdx]
 
 
-        let rec insertIntoNextEmptyBucket (d: byref<Data<string, _>>) (parentIdx: int) (hashCode: uint64) (key: string) (value: 'Value) (offset: byte) (bucketIdx: int) =
+        let rec insertIntoNextEmptyBucket (d: byref<Acc<string, _>>) (parentIdx: int) (hashCode: int) (key: string) (value: 'Value) (offset: byte) (bucketIdx: int) =
             if bucketIdx < d.Keys.Length then
                 if Next.isAvailable d.Nexts[bucketIdx] then
                     setBucket &d Next.last hashCode key value bucketIdx
@@ -377,7 +434,7 @@ module StrDictionary =
                 insertIntoNextEmptyBucket &d parentIdx hashCode key value offset 0
 
 
-        let rec listSearch (d: byref<Data<string, _>>) (hashCode: uint64) (key: string) (value: 'Value) (bucketIdx: int) =
+        let rec listSearch (d: byref<Acc<string, _>>) (hashCode: int) (key: string) (value: 'Value) (bucketIdx: int) =
             // Check if we have found an existing Entry for the Key
             // If we have, we want to update the value
             if d.HashCodes[bucketIdx] = hashCode &&
@@ -400,9 +457,9 @@ module StrDictionary =
                 listSearch &d hashCode key value nextBucketIdx
 
 
-        let rec addEntry (d: byref<Data<string,_>>) (hashCode: uint64) (key: string) (value: 'Value) =
+        let rec addEntry (d: byref<Acc<string,_>>) (hashCode: int) (key: string) (value: 'Value) =
 
-            let bucketIdx = computeBucketIndex &d hashCode
+            let bucketIdx = computeBucketIndex d.BucketBitShift hashCode
             // Check if bucket is Empty or a Tombstone
             if Next.isAvailable d.Nexts[bucketIdx] then
                 setBucket &d Next.last hashCode key value bucketIdx
@@ -431,7 +488,7 @@ module StrDictionary =
                 listSearch &d hashCode key value bucketIdx
 
 
-        let resize (d: byref<Data<string, _>>) =
+        let resize (d: byref<Acc<string, _>>) =
             // Resize if our fill is >75%
             if d.Count > (d.Keys.Length >>> 2) * 3 then
             // if count > buckets.Length - 2 then
@@ -457,9 +514,11 @@ module StrDictionary =
         let raiseKeyNotFound hashcode key =
             raise (KeyNotFoundException $"Missing Key: {key} Hashcode: {hashcode}")
 
-        let rec searchLoop (d: inref<Data<string, _>>) (hashCode: uint64) (key: string) (bucketIdx: int) =
+        let rec searchLoop (d: inref<Data<_>>) (hashCode: int) (key: string) (bucketIdx: int) =
+            let strRange = d.KeyRanges[bucketIdx]
+            let keyChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
             if hashCode = d.HashCodes[bucketIdx] &&
-               strEquals (key, d.Keys[bucketIdx]) then
+               (key.AsSpan().SequenceEqual(keyChars)) then
                 d.Values[bucketIdx]
 
             elif Next.isLast d.Nexts[bucketIdx] then
@@ -477,21 +536,25 @@ module StrDictionary =
         for key, _ in entries do
             uniqueKeys.Add key |> ignore
 
-        let mutable d : Data<string, 'Value> = Data<_,_>.init()
+        let mutable acc : Acc<string, 'Value> = Acc<_,_>.init()
 
         for key, value in entries do
             let hashCode = strHashCode key
-            addEntry &d hashCode key value
-            resize &d
+            addEntry &acc hashCode key value
+            resize &acc
+
+        let d = Data.ofAcc acc
 
         { new IStaticDictionary<string, 'Value> with
             member _.Item
                 with get (key: string) =
                     let hashCode = strHashCode key
-                    let bucketIdx = computeBucketIndex &d hashCode
+                    let bucketIdx = computeBucketIndex d.BucketBitShift hashCode
+                    let strRange = d.KeyRanges[bucketIdx]
+                    let strChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
 
                     if hashCode = d.HashCodes[bucketIdx] &&
-                       strEquals (key, d.Keys[bucketIdx]) then
+                       (key.AsSpan().SequenceEqual strChars) then
                         d.Values[bucketIdx]
 
                     elif Next.isLast d.Nexts[bucketIdx] then
