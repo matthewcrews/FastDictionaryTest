@@ -1,4 +1,5 @@
-﻿open System.Collections.Generic
+﻿open System.Collections.Frozen
+open System.Collections.Generic
 
 
 // type KeyCount =
@@ -34,7 +35,7 @@ let strDataSets =
              d[k] <- v
 
          d
-         |> Seq.map (|KeyValue|)
+         // |> Seq.map (|KeyValue|)
          |> Array.ofSeq
     |]
 
@@ -44,12 +45,12 @@ let strKeySets =
         let data = strDataSets[testKey]
         [| for _ in 1 .. lookupCount ->
             // Next is exclusive on the upper bound
-            fst data[rng.Next data.Length] |]
+            data[rng.Next data.Length].Key |]
     |]
 
 let testDictionaries =
     [| for data in strDataSets do
-           FastDictionaryTest.SubstringComparer.Dictionary data |]
+           FrozenDictionary.ToFrozenDictionary(data, optimizeForReading = true) |]
 
 printfn "Starting loops"
 for _ in 1 .. 100_000 do

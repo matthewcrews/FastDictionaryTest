@@ -61,7 +61,7 @@ let strDataSets =
              let d = Dictionary()
 
              while d.Count < count do
-                 let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
+                 let k = $"Key[{((rng.Next (minKey, maxKey)))}]"
                  let v = rng.Next maxValue
                  d[k] <- v
 
@@ -78,6 +78,8 @@ let strKeySets =
             let data = strDataSets[int keyCount][testKey]
             [| for _ in 1 .. lookupCount ->
                 // Next is exclusive on the upper bound
-                fst data[rng.Next data.Length] |]
+               let key = fst data[rng.Next data.Length]
+               let newKey = System.String key
+               newKey |]
         |]
     |]

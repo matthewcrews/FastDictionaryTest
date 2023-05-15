@@ -36,7 +36,7 @@ module private Helpers =
             mutable Count: int
             mutable Keys: 'Key[]
             mutable Values: 'Value[]
-            mutable HashCodes: int[]
+            mutable HashCodes: uint64[]
             mutable Nexts: byte[]
             mutable BucketBitShift: int
             mutable WrapAroundMask: int
@@ -274,37 +274,37 @@ module StrDictionary =
         let strEquals (a: string, b: string) =
             a.AsSpan().SequenceEqual(b.AsSpan())
 
-        let strHashCode (a: string) =
+        let strHashCode (a: string) : uint64 =
             let mutable hash1 = (5381UL <<< 16) + 5381UL
             let mutable hash2 = hash1
             let mutable length = a.Length
 
             use ptr = fixed a
             // Move the pointer to where we want to start hashing
-            let mutable ptr : nativeptr<UInt64> = retype ptr
-            while length > 7 do
-                hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr 0)
-                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr 1)
-                length <- length - 8
-                ptr <- NativePtr.add ptr 2
+            // let mutable ptr64 : nativeptr<UInt64> = retype ptr
+            // while length > 7 do
+            //     hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr64 0)
+            //     hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr64 1)
+            //     length <- length - 8
+            //     ptr64 <- NativePtr.add ptr64 2
 
-            let mutable ptr : nativeptr<UInt32> = retype ptr
+            let mutable ptr32 : nativeptr<UInt32> = retype ptr
             while length > 3 do
-                hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ uint64 (NativePtr.get ptr 0)
-                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr 1)
+                hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ uint64 (NativePtr.get ptr32 0)
+                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr32 1)
                 length <- length - 4
-                ptr <- NativePtr.add ptr 2
+                ptr32 <- NativePtr.add ptr32 2
 
-            let mutable ptr : nativeptr<char> = retype ptr
+            let mutable ptr16 : nativeptr<char> = retype ptr32
             while length > 0 do
-                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr 1)
-                length <- length - 4
-                ptr <- NativePtr.add ptr 2
+                hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint64 (NativePtr.get ptr16 0)
+                length <- length - 1
+                ptr16 <- NativePtr.add ptr16 1
 
 
-            int (hash1 + (hash2 * 1566083941UL))
+            (hash1 + (hash2 * 1566083941UL))
 
-        let computeBucketIndex (d: inref<Data<string,_>>) (hashCode: int) =
+        let computeBucketIndex (d: inref<Data<string,_>>) (hashCode: uint64) =
             let hashProduct = (uint hashCode) * 2654435769u
             int (hashProduct >>> d.BucketBitShift)
 
@@ -322,7 +322,7 @@ module StrDictionary =
                 getParentBucketIdxLoop &d childBucketIdx nextIdx
 
 
-        let getParentBucketIdx (d: inref<Data<string, _>>) (hashCode: int) (childBucketIdx: int) =
+        let getParentBucketIdx (d: inref<Data<string, _>>) (hashCode: uint64) (childBucketIdx: int) =
             let initialIdx = computeBucketIndex &d hashCode
             getParentBucketIdxLoop &d childBucketIdx initialIdx
 
@@ -353,7 +353,7 @@ module StrDictionary =
                 d.Nexts[parentBucketIdx] <- d.Nexts[parentBucketIdx] + d.Nexts[bucketIdx]
 
 
-        let rec insertIntoNextEmptyBucket (d: byref<Data<string, _>>) (parentIdx: int) (hashCode: int) (key: string) (value: 'Value) (offset: byte) (bucketIdx: int) =
+        let rec insertIntoNextEmptyBucket (d: byref<Data<string, _>>) (parentIdx: int) (hashCode: uint64) (key: string) (value: 'Value) (offset: byte) (bucketIdx: int) =
             if bucketIdx < d.Keys.Length then
                 if Next.isAvailable d.Nexts[bucketIdx] then
                     setBucket &d Next.last hashCode key value bucketIdx
@@ -377,7 +377,7 @@ module StrDictionary =
                 insertIntoNextEmptyBucket &d parentIdx hashCode key value offset 0
 
 
-        let rec listSearch (d: byref<Data<string, _>>) (hashCode: int) (key: string) (value: 'Value) (bucketIdx: int) =
+        let rec listSearch (d: byref<Data<string, _>>) (hashCode: uint64) (key: string) (value: 'Value) (bucketIdx: int) =
             // Check if we have found an existing Entry for the Key
             // If we have, we want to update the value
             if d.HashCodes[bucketIdx] = hashCode &&
@@ -400,7 +400,7 @@ module StrDictionary =
                 listSearch &d hashCode key value nextBucketIdx
 
 
-        let rec addEntry (d: byref<Data<string,_>>) (hashCode: int) (key: string) (value: 'Value) =
+        let rec addEntry (d: byref<Data<string,_>>) (hashCode: uint64) (key: string) (value: 'Value) =
 
             let bucketIdx = computeBucketIndex &d hashCode
             // Check if bucket is Empty or a Tombstone
@@ -451,15 +451,13 @@ module StrDictionary =
                 d.Count <- 0
 
                 for i in 0..prevKeys.Length - 1 do
-                    if newSize = 16 && (prevHashCodes[i] = -61060) then
-                        ()
                     if Next.isEntry prevNexts[i] then
                         addEntry &d prevHashCodes[i] prevKeys[i] prevValues[i]
 
         let raiseKeyNotFound hashcode key =
             raise (KeyNotFoundException $"Missing Key: {key} Hashcode: {hashcode}")
 
-        let rec searchLoop (d: inref<Data<string, _>>) (hashCode: int) (key: string) (bucketIdx: int) =
+        let rec searchLoop (d: inref<Data<string, _>>) (hashCode: uint64) (key: string) (bucketIdx: int) =
             if hashCode = d.HashCodes[bucketIdx] &&
                strEquals (key, d.Keys[bucketIdx]) then
                 d.Values[bucketIdx]
