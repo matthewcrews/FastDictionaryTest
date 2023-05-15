@@ -471,21 +471,6 @@ module StrDictionary =
                 let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
                 searchLoop &d hashCode key nextBucketIdx
 
-        let computeHashingParameters (uniqueKeys: HashSet<string>) =
-            let mutable salt = 1
-            let mutable searching = true
-            let hashCodeAcc = HashSet()
-
-            while searching do
-                for key in uniqueKeys do
-                    let hashCode =
-
-
-
-
-            ()
-
-
     open Helpers
 
 
@@ -497,14 +482,14 @@ module StrDictionary =
         let mutable d : Data<string, 'Value> = Data<_,_>.init()
 
         for key, value in entries do
-            let hashCode = strHashCode minLength key
+            let hashCode = strHashCode key
             addEntry &d hashCode key value
             resize &d
 
         { new IStaticDictionary<string, 'Value> with
             member _.Item
                 with get (key: string) =
-                    let hashCode = strHashCode minLength key
+                    let hashCode = strHashCode key
                     let bucketIdx = computeBucketIndex &d hashCode
 
                     if hashCode = d.HashCodes[bucketIdx] &&
