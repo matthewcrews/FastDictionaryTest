@@ -184,27 +184,27 @@ let ``Naive Dictionary matches`` () =
 //
 
 [<Test>]
-let ``SubstringComparer Dictionary matches`` () =
+let ``SOA Dictionary matches`` () =
 
-    // (intDataSets, intKeySets)
-    // ||> Array.iter2 (fun data keys ->
-    //     (data, keys)
-    //     ||> Array.iter2 (fun data keys ->
-    //         let testDictionary = SubstringComparer.Dictionary data
-    //         let expectedValues = dict data
-    //
-    //         for k in keys do
-    //             let actualValue = testDictionary[k]
-    //             let expectedValue = expectedValues[k]
-    //             Assert.AreEqual (expectedValue, actualValue)
-    //         )
-    //     )
+    (intDataSets, intKeySets)
+    ||> Array.iter2 (fun data keys ->
+        (data, keys)
+        ||> Array.iter2 (fun data keys ->
+            let testDictionary = SOA.StaticDict.create data
+            let expectedValues = dict data
+
+            for k in keys do
+                let actualValue = testDictionary[k]
+                let expectedValue = expectedValues[k]
+                Assert.AreEqual (expectedValue, actualValue)
+            )
+        )
 
     (strDataSets, strKeySets)
     ||> Array.iter2 (fun data keys ->
         (data, keys)
         ||> Array.iter2 (fun data keys ->
-            let testDictionary = SubstringComparer.StrDictionary.create data
+            let testDictionary = SOA.StaticDict.create data
             let expectedValues = dict data
 
             for k in keys do

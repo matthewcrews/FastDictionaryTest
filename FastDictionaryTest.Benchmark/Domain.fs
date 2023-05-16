@@ -61,7 +61,7 @@ let strDataSets =
              let d = Dictionary()
 
              while d.Count < count do
-                 let k = $"Key[{((rng.Next (minKey, maxKey)))}]"
+                 let k = $"Key[{((rng.Next (minKey, maxKey)) <<< 16)}]"
                  let v = rng.Next maxValue
                  d[k] <- v
 

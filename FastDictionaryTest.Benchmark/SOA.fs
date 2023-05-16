@@ -67,7 +67,7 @@ type SubstringComparer () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 strDataSets[int countKey][testKey]
-                |> SubstringComparer.StrDictionary.create
+                |> SOA.StrDictionary.create
             |]
         |]
 
