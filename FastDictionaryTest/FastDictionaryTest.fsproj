@@ -20,9 +20,10 @@
         <Compile Include="ByteListRobinHood.fs" />
         <Compile Include="ByteListRobinHoodInline.fs" />
         <Compile Include="SOA\Helpers.fs" />
+        <Compile Include="SOA\RefDict.fs" />
+        <Compile Include="SOA\ValueDict.fs" />
         <Compile Include="SOA\StrDict.fs" />
         <Compile Include="SOA\IntDict.fs" />
-        <Compile Include="SOA\ValueDict.fs" />
         <Compile Include="SOA.fs" />
         <Compile Include="CStyle.fs" />
         <Compile Include="ByteListRobinHoodVec128.fs" />

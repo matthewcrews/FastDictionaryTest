@@ -8,10 +8,40 @@ open FastDictionaryTest.SOA.Helpers
 
 #nowarn "9" "42" "51"
 
-module private rec Helpers =
+module internal rec Helpers =
 
     [<Struct>]
-    type StrData<'Value> =
+    type Acc<'Key, 'Value when 'Key : equality> =
+        {
+            mutable Count: int
+            mutable Keys: 'Key[]
+            mutable Values: 'Value[]
+            mutable HashCodes: int[]
+            mutable Nexts: byte[]
+            mutable BucketBitShift: int
+            mutable WrapAroundMask: int
+        }
+        static member init () =
+            let initialCapacity = 4
+            {
+                Count = 0
+                Keys = Array.zeroCreate 4
+                Values = Array.zeroCreate 4
+                HashCodes = Array.zeroCreate 4
+                Nexts = Array.create 4 Next.empty
+                BucketBitShift = 32 - (BitOperations.TrailingZeroCount initialCapacity)
+                WrapAroundMask = initialCapacity - 1
+            }
+
+    [<Struct>]
+    type Range =
+        {
+            Start: int
+            Length: int
+        }
+
+    [<Struct>]
+    type Data<'Value> =
         {
             KeyRanges: Range[]
             KeyChars: char[]
@@ -246,7 +276,7 @@ module private rec Helpers =
     let raiseKeyNotFound hashcode key =
         raise (KeyNotFoundException $"Missing Key: {key} Hashcode: {hashcode}")
 
-    let rec searchLoop (d: inref<StrData<_>>) (hashCode: int) (key: string) (bucketIdx: int) =
+    let rec searchLoop (d: inref<Data<_>>) (hashCode: int) (key: string) (bucketIdx: int) =
         let strRange = d.KeyRanges[bucketIdx]
         let keyChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
         if hashCode = d.HashCodes[bucketIdx] &&
@@ -263,6 +293,28 @@ module private rec Helpers =
 open Helpers
 
 
+type StrStaticDict<'Value> internal (d: Data<'Value>) =
+
+    inherit StaticDict<string, 'Value>()
+
+    override _.Item
+        with get (key: string) =
+            let hashCode = strHashCode key
+            let bucketIdx = computeBucketIndex d.BucketBitShift hashCode
+            let strRange = d.KeyRanges[bucketIdx]
+            let strChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
+
+            if hashCode = d.HashCodes[bucketIdx] &&
+               (key.AsSpan().SequenceEqual strChars) then
+                d.Values[bucketIdx]
+
+            elif Next.isLast d.Nexts[bucketIdx] then
+                    raiseKeyNotFound hashCode key
+
+                else
+                    let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
+                    searchLoop &d hashCode key nextBucketIdx
+
 let create (entries: seq<string * 'Value>) =
     let uniqueKeys = HashSet()
     for key, _ in entries do
@@ -275,23 +327,6 @@ let create (entries: seq<string * 'Value>) =
         addEntry &acc hashCode key value
         resize &acc
 
-    let d = StrData.ofAcc acc
+    let d = Data.ofAcc acc
 
-    { new IStaticDictionary<string, 'Value> with
-        member _.Item
-            with get (key: string) =
-                let hashCode = strHashCode key
-                let bucketIdx = computeBucketIndex d.BucketBitShift hashCode
-                let strRange = d.KeyRanges[bucketIdx]
-                let strChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
-
-                if hashCode = d.HashCodes[bucketIdx] &&
-                   (key.AsSpan().SequenceEqual strChars) then
-                    d.Values[bucketIdx]
-
-                elif Next.isLast d.Nexts[bucketIdx] then
-                    raiseKeyNotFound hashCode key
-
-                else
-                    let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
-                    searchLoop &d hashCode key nextBucketIdx}
+    StrStaticDict d :> StaticDict<string, 'Value>

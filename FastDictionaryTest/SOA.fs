@@ -1,14 +1,16 @@
 ﻿module FastDictionaryTest.SOA.StaticDict
 
-open System
 open FastDictionaryTest.SOA.Helpers
 
-let create (entries: seq<'Key * 'Value>) =
+let create (entries: seq<'Key * 'Value>) : StaticDict<'Key, 'Value> =
 
     match entries with
     | :? seq<int * 'Value> as entries ->
-        IntDict.create entries :?> IStaticDictionary<'Key, 'Value>
+        retype (IntDict.create entries)
     | :? seq<string * 'Value> as entries ->
-        StrDict.create entries :?> IStaticDictionary<'Key, 'Value>
+        retype (StrDict.create entries)
     | _ ->
-        raise (NotImplementedException())
+        if typeof<'Key>.IsValueType then
+            ValueDict.create entries
+        else
+            RefDict.create entries

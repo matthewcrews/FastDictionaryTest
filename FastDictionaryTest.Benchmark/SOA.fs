@@ -1,11 +1,9 @@
 ﻿namespace FastDictionaryTest.Benchmark
 
-
 open System.Collections.Frozen
 open System.Collections.Generic
 open BenchmarkDotNet.Diagnosers
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Jobs
 open FastDictionaryTest
 open FastDictionaryTest.Benchmark.Domain
 
@@ -14,7 +12,7 @@ open FastDictionaryTest.Benchmark.Domain
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
 [<DisassemblyDiagnoser(filters=[||])>]
-type SubstringComparer () =
+type SOA () =
 
     let intDictionaries =
         [| for countKey, _ in valueCounts ->
@@ -55,24 +53,24 @@ type SubstringComparer () =
             |]
         |]
 
-    // let intTestDictionaries =
-    //     [| for countKey, _ in valueCounts ->
-    //         [|for testKey in 0 .. testCount - 1 ->
-    //             intDataSets[int countKey][testKey]
-    //             |> SubstringComparer.Dictionary
-    //         |]
-    //     |]
+    let intTestDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                intDataSets[int countKey][testKey]
+                |> SOA.StaticDict.create
+            |]
+        |]
 
     let strTestDictionaries =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 strDataSets[int countKey][testKey]
-                |> SOA.StrDictionary.create
+                |> SOA.StaticDict.create
             |]
         |]
 
-    // [<Params(KeyType.Int, KeyType.String)>]
-    [<Params(KeyType.String)>]
+    [<Params(KeyType.Int, KeyType.String)>]
+    // [<Params(KeyType.String)>]
     member val KeyType = KeyType.Int with get, set
 
     [<Params(
@@ -84,7 +82,7 @@ type SubstringComparer () =
     member val KeyCount = KeyCount.``10`` with get, set
 
 
-    // [<Benchmark(Description = "Dictionary")>]
+    [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
 
         if b.KeyType = KeyType.Int then
@@ -151,19 +149,18 @@ type SubstringComparer () =
     member b.Test () =
 
         if b.KeyType = KeyType.Int then
-            // let mutable acc = 0
-            // let dataSet = intTestDictionaries[int b.KeyCount]
-            // let keySet = intKeySets[int b.KeyCount]
-            //
-            // for testKey in 0 .. testCount - 1 do
-            //     let data = dataSet[testKey]
-            //     let keys = keySet[testKey]
-            //
-            //     for k in keys do
-            //         acc <- acc + data[k]
-            //
-            // acc
-            1
+            let mutable acc = 0
+            let dataSet = intTestDictionaries[int b.KeyCount]
+            let keySet = intKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
 
         else
             let mutable acc = 0

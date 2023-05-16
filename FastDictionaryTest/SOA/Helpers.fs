@@ -7,7 +7,8 @@ open System.Collections.Generic
 
 #nowarn "9" "42" "51"
 
-type IStaticDictionary<'Key, 'Value> =
+[<AbstractClass>]
+type StaticDict<'Key, 'Value>() =
     abstract member Item : 'Key -> 'Value with get
 
 
@@ -25,34 +26,3 @@ module Next =
     let isOccupied  next = next <= tombstone
     let isAvailable next = next >= tombstone
     let isLast      next = next = last
-
-
-[<Struct>]
-type Acc<'Key, 'Value when 'Key : equality> =
-    {
-        mutable Count: int
-        mutable Keys: 'Key[]
-        mutable Values: 'Value[]
-        mutable HashCodes: int[]
-        mutable Nexts: byte[]
-        mutable BucketBitShift: int
-        mutable WrapAroundMask: int
-    }
-    static member init () =
-        let initialCapacity = 4
-        {
-            Count = 0
-            Keys = Array.zeroCreate 4
-            Values = Array.zeroCreate 4
-            HashCodes = Array.zeroCreate 4
-            Nexts = Array.create 4 Next.empty
-            BucketBitShift = 32 - (BitOperations.TrailingZeroCount initialCapacity)
-            WrapAroundMask = initialCapacity - 1
-        }
-
-[<Struct>]
-type Range =
-    {
-        Start: int
-        Length: int
-    }
