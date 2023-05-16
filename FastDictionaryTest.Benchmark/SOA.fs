@@ -1,11 +1,9 @@
 ﻿namespace FastDictionaryTest.Benchmark
 
-
 open System.Collections.Frozen
 open System.Collections.Generic
 open BenchmarkDotNet.Diagnosers
 open BenchmarkDotNet.Attributes
-open BenchmarkDotNet.Jobs
 open FastDictionaryTest
 open FastDictionaryTest.Benchmark.Domain
 
@@ -14,7 +12,7 @@ open FastDictionaryTest.Benchmark.Domain
                    HardwareCounter.BranchInstructions,
                    HardwareCounter.BranchMispredictions)>]
 [<DisassemblyDiagnoser(filters=[||])>]
-type ByteListRobinHoodInline () =
+type SOA () =
 
     let intDictionaries =
         [| for countKey, _ in valueCounts ->
@@ -59,7 +57,7 @@ type ByteListRobinHoodInline () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 intDataSets[int countKey][testKey]
-                |> ByteListRobinHoodInline.Dictionary
+                |> SOA.StaticDict.create
             |]
         |]
 
@@ -67,11 +65,12 @@ type ByteListRobinHoodInline () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 strDataSets[int countKey][testKey]
-                |> ByteListRobinHoodInline.Dictionary
+                |> SOA.StaticDict.create
             |]
         |]
 
     [<Params(KeyType.Int, KeyType.String)>]
+    // [<Params(KeyType.String)>]
     member val KeyType = KeyType.Int with get, set
 
     [<Params(

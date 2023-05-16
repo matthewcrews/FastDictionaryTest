@@ -81,7 +81,7 @@ let profile (version: string) loopCount =
             result <- b.Test()
 
     | "bytelistrobinhoodinline" ->
-        let b = ByteListRobinHood()
+        let b = ByteListRobinHoodInline()
         for i in 1 .. loopCount do
             result <- b.Test()
 
@@ -163,6 +163,10 @@ let main argv =
 
         | "bytelistrobinhoodinline" ->
             let _ = BenchmarkRunner.Run<ByteListRobinHoodInline>()
+            ()
+
+        | "soa" ->
+            let _ = BenchmarkRunner.Run<SOA>()
             ()
 
         | "cstyle" ->

@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <TargetFramework>net6.0</TargetFramework>
+        <TargetFramework>net8.0</TargetFramework>
         <Platform>x64</Platform>
     </PropertyGroup>
 
@@ -21,6 +21,7 @@
         <Compile Include="ByteList.fs" />
         <Compile Include="ByteListRobinHood.fs" />
         <Compile Include="ByteListRobinHoodInline.fs" />
+        <Compile Include="SOA.fs" />
         <Compile Include="CStyle.fs" />
         <Compile Include="ByteListRobinHoodVec128.fs" />
         <!--        <Compile Include="Benchmarks.fs" />-->

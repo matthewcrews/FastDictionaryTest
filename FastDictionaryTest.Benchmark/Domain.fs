@@ -20,9 +20,9 @@ let valueCounts = [|
 |]
 
 let rng = System.Random 123
-let minKey = 0
+let minKey = -100_000
 let maxKey = 100_000
-let maxValue = 1_000
+let maxValue = 100_000
 let testCount = 100
 let lookupCount = 100
 
@@ -78,6 +78,8 @@ let strKeySets =
             let data = strDataSets[int keyCount][testKey]
             [| for _ in 1 .. lookupCount ->
                 // Next is exclusive on the upper bound
-                fst data[rng.Next data.Length] |]
+               let key = fst data[rng.Next data.Length]
+               let newKey = System.String key
+               newKey |]
         |]
     |]
