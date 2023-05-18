@@ -11,31 +11,39 @@ Here are the results for the current best performing `Dictionary` version.
 ```
 // * Summary *
 
-BenchmarkDotNet=v0.13.2, OS=Windows 11 (10.0.22621.963)
-AMD Ryzen 9 3900X, 1 CPU, 24 logical and 12 physical cores
-.NET SDK=6.0.402
-  [Host]     : .NET 6.0.10 (6.0.1022.47605), X64 RyuJIT AVX2 DEBUG
-  DefaultJob : .NET 6.0.10 (6.0.1022.47605), X64 RyuJIT AVX2
+BenchmarkDotNet=v0.13.2, OS=Windows 11 (10.0.22621.1702)
+13th Gen Intel Core i9-13900K, 1 CPU, 32 logical and 24 physical cores
+.NET SDK=8.0.100-preview.3.23178.7
+  [Host]     : .NET 8.0.0 (8.0.23.17408), X64 RyuJIT AVX2 DEBUG
+  DefaultJob : .NET 8.0.0 (8.0.23.17408), X64 RyuJIT AVX2
 ```
 
-|               Method | KeyType | KeyCount |      Mean |     Error |    StdDev | BranchInstructions/Op | BranchMispredictions/Op | CacheMisses/Op | Allocated |
-|--------------------- |-------- |--------- |----------:|----------:|----------:|----------------------:|------------------------:|---------------:|----------:|
-|           Dictionary |     Int |       10 |  5.069 us | 0.0799 us | 0.0820 us |                11,898 |                      51 |              5 |         - |
-| 'ByteList RobinHood' |     Int |       10 |  3.599 us | 0.0508 us | 0.0475 us |                 8,548 |                      11 |              6 |         - |
-|           Dictionary |     Int |      100 |  5.409 us | 0.0317 us | 0.0281 us |                12,290 |                      37 |              5 |         - |
-| 'ByteList RobinHood' |     Int |      100 |  3.437 us | 0.0289 us | 0.0270 us |                 7,721 |                      42 |              5 |         - |
-|           Dictionary |     Int |    1_000 |  6.070 us | 0.1193 us | 0.1277 us |                12,270 |                      29 |             13 |         - |
-| 'ByteList RobinHood' |     Int |    1_000 |  3.738 us | 0.0559 us | 0.0801 us |                 8,068 |                      26 |             12 |         - |
-|           Dictionary |     Int |   10_000 | 18.431 us | 0.3551 us | 0.4617 us |                12,569 |                      46 |          2,014 |         - |
-| 'ByteList RobinHood' |     Int |   10_000 |  3.753 us | 0.0182 us | 0.0162 us |                 7,999 |                      22 |              7 |         - |
-|           Dictionary |  String |       10 | 17.499 us | 0.2165 us | 0.2025 us |                36,514 |                     533 |             19 |         - |
-| 'ByteList RobinHood' |  String |       10 | 14.645 us | 0.1842 us | 0.1538 us |                27,544 |                     362 |             22 |         - |
-|           Dictionary |  String |      100 | 18.580 us | 0.2062 us | 0.1929 us |                36,878 |                     595 |             21 |         - |
-| 'ByteList RobinHood' |  String |      100 | 14.966 us | 0.1430 us | 0.1338 us |                27,379 |                     389 |             19 |         - |
-|           Dictionary |  String |    1_000 | 22.116 us | 0.4364 us | 0.4481 us |                36,972 |                     602 |          1,211 |         - |
-| 'ByteList RobinHood' |  String |    1_000 | 17.685 us | 0.3533 us | 0.3305 us |                27,771 |                     407 |            488 |         - |
-|           Dictionary |  String |   10_000 | 27.625 us | 0.4776 us | 0.4467 us |                37,149 |                     610 |          2,228 |         - |
-| 'ByteList RobinHood' |  String |   10_000 | 19.450 us | 0.1639 us | 0.1368 us |                27,934 |                     409 |            692 |         - |
+|              Method | KeyType | KeyCount |      Mean |    Error |   StdDev | Code Size | BranchInstructions/Op | CacheMisses/Op | BranchMispredictions/Op | Allocated |
+|-------------------- |-------- |--------- |----------:|---------:|---------:|----------:|----------------------:|---------------:|------------------------:|----------:|
+|          Dictionary |     Int |       10 |  55.26 us | 0.584 us | 0.546 us |   1,566 B |               113,966 |             86 |                   2,983 |         - |
+| 'Frozen Dictionary' |     Int |       10 | 111.99 us | 0.294 us | 0.260 us |   1,247 B |               338,890 |             25 |                   8,779 |         - |
+|       'Static Dict' |     Int |       10 |  21.47 us | 0.147 us | 0.130 us |   1,129 B |                75,423 |             20 |                     974 |         - |
+|          Dictionary |     Int |      100 |  66.01 us | 0.505 us | 0.473 us |   1,566 B |               115,166 |             39 |                   3,580 |         - |
+| 'Frozen Dictionary' |     Int |      100 |  23.14 us | 0.241 us | 0.201 us |   1,247 B |               111,234 |              4 |                     344 |         - |
+|       'Static Dict' |     Int |      100 |  16.45 us | 0.314 us | 0.374 us |   1,129 B |                69,543 |              3 |                     470 |         - |
+|          Dictionary |     Int |    1_000 |  66.22 us | 0.205 us | 0.182 us |   1,566 B |               114,626 |             38 |                   3,454 |         - |
+| 'Frozen Dictionary' |     Int |    1_000 |  33.35 us | 0.368 us | 0.326 us |   1,247 B |               114,353 |             33 |                     880 |         - |
+|       'Static Dict' |     Int |    1_000 |  21.54 us | 0.132 us | 0.117 us |   1,129 B |                72,319 |             10 |                     823 |         - |
+|          Dictionary |     Int |   10_000 | 109.51 us | 1.246 us | 1.104 us |   1,566 B |               116,149 |          2,081 |                   3,761 |         - |
+| 'Frozen Dictionary' |     Int |   10_000 |  67.62 us | 1.309 us | 1.161 us |   1,247 B |               114,929 |          2,527 |                     778 |         - |
+|       'Static Dict' |     Int |   10_000 |  44.55 us | 0.871 us | 0.855 us |   1,129 B |                74,966 |            945 |                   1,476 |         - |
+|          Dictionary |  String |       10 | 170.37 us | 1.455 us | 1.215 us |   1,551 B |               444,723 |             27 |                   8,670 |         - |
+| 'Frozen Dictionary' |  String |       10 | 130.26 us | 1.043 us | 0.925 us |   1,247 B |               417,279 |             21 |                   7,581 |         - |
+|       'Static Dict' |  String |       10 |  90.23 us | 0.687 us | 0.536 us |   1,129 B |               325,809 |             15 |                   3,841 |         - |
+|          Dictionary |  String |      100 | 185.48 us | 2.765 us | 2.587 us |   1,551 B |               446,424 |             77 |                   9,919 |         - |
+| 'Frozen Dictionary' |  String |      100 |  98.59 us | 1.119 us | 1.047 us |   1,247 B |               376,587 |             59 |                   3,083 |         - |
+|       'Static Dict' |  String |      100 |  92.69 us | 1.137 us | 1.063 us |   1,129 B |               320,451 |             29 |                   3,539 |         - |
+|          Dictionary |  String |    1_000 | 247.58 us | 3.099 us | 2.898 us |   1,551 B |               447,108 |          1,523 |                   9,563 |         - |
+| 'Frozen Dictionary' |  String |    1_000 | 153.22 us | 1.506 us | 1.335 us |   1,247 B |               357,688 |          1,861 |                   2,888 |         - |
+|       'Static Dict' |  String |    1_000 | 137.71 us | 1.561 us | 1.460 us |   1,129 B |               325,975 |            646 |                   3,944 |         - |
+|          Dictionary |  String |   10_000 | 365.60 us | 6.803 us | 6.031 us |   1,551 B |               450,305 |          6,617 |                  10,426 |         - |
+| 'Frozen Dictionary' |  String |   10_000 | 245.21 us | 2.819 us | 2.354 us |   1,247 B |               383,241 |          7,225 |                   4,193 |         - |
+|       'Static Dict' |  String |   10_000 | 197.43 us | 1.163 us | 1.031 us |   1,129 B |               332,395 |          6,683 |                   5,179 |         - |
 
 ## Running Benchmarks
 
@@ -59,3 +67,6 @@ The possible values for `<Suite of Interest>` are:
 - ByteList
 - ByteListRobinHood
 - ByteListRobinHoodVec128
+- ByteListRobinHoodInline
+- CStyle
+- SOA

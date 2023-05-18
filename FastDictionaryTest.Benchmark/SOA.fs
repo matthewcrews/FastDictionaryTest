@@ -32,6 +32,23 @@ type SOA () =
             |]
         |]
 
+    let structDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                structDataSets[int countKey][testKey]
+                |> Array.map KeyValuePair
+                |> Dictionary
+            |]
+        |]
+
+    let refDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                refDataSets[int countKey][testKey]
+                |> Array.map KeyValuePair
+                |> Dictionary
+            |]
+        |]
 
     let intFrozenDictionaries =
         [| for countKey, _ in valueCounts ->
@@ -47,6 +64,26 @@ type SOA () =
         [| for countKey, _ in valueCounts ->
             [|for testKey in 0 .. testCount - 1 ->
                 strDataSets[int countKey][testKey]
+                |> Array.map KeyValuePair
+                |> Dictionary
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+            |]
+        |]
+
+    let structFrozenDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                structDataSets[int countKey][testKey]
+                |> Array.map KeyValuePair
+                |> Dictionary
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+            |]
+        |]
+
+    let refFrozenDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                refDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
                 |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
@@ -69,8 +106,24 @@ type SOA () =
             |]
         |]
 
+    let structTestDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                structDataSets[int countKey][testKey]
+                |> SOA.StaticDict.create
+            |]
+        |]
+
+    let refTestDictionaries =
+        [| for countKey, _ in valueCounts ->
+            [|for testKey in 0 .. testCount - 1 ->
+                refDataSets[int countKey][testKey]
+                |> SOA.StaticDict.create
+            |]
+        |]
+
+    // [<Params(KeyType.Int, KeyType.String, KeyType.Struct, KeyType.Ref)>]
     [<Params(KeyType.Int, KeyType.String)>]
-    // [<Params(KeyType.String)>]
     member val KeyType = KeyType.Int with get, set
 
     [<Params(
@@ -99,10 +152,38 @@ type SOA () =
 
             acc
 
-        else
+        elif b.KeyType = KeyType.String then
             let mutable acc = 0
             let dataSet = strDictionaries[int b.KeyCount]
             let keySet = strKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+        elif b.KeyType = KeyType.Struct then
+            let mutable acc = 0
+            let dataSet = structDictionaries[int b.KeyCount]
+            let keySet = structKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+        else
+            let mutable acc = 0
+            let dataSet = refDictionaries[int b.KeyCount]
+            let keySet = refKeySets[int b.KeyCount]
 
             for testKey in 0 .. testCount - 1 do
                 let data = dataSet[testKey]
@@ -130,10 +211,38 @@ type SOA () =
 
             acc
 
-        else
+        elif b.KeyType = KeyType.String then
             let mutable acc = 0
             let dataSet = strFrozenDictionaries[int b.KeyCount]
             let keySet = strKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+        elif b.KeyType = KeyType.Struct then
+            let mutable acc = 0
+            let dataSet = structFrozenDictionaries[int b.KeyCount]
+            let keySet = structKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+        else
+            let mutable acc = 0
+            let dataSet = refFrozenDictionaries[int b.KeyCount]
+            let keySet = refKeySets[int b.KeyCount]
 
             for testKey in 0 .. testCount - 1 do
                 let data = dataSet[testKey]
@@ -162,10 +271,38 @@ type SOA () =
 
             acc
 
-        else
+        elif b.KeyType = KeyType.String then
             let mutable acc = 0
             let dataSet = strTestDictionaries[int b.KeyCount]
             let keySet = strKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+        elif b.KeyType = KeyType.Struct then
+            let mutable acc = 0
+            let dataSet = structTestDictionaries[int b.KeyCount]
+            let keySet = structKeySets[int b.KeyCount]
+
+            for testKey in 0 .. testCount - 1 do
+                let data = dataSet[testKey]
+                let keys = keySet[testKey]
+
+                for k in keys do
+                    acc <- acc + data[k]
+
+            acc
+
+        else
+            let mutable acc = 0
+            let dataSet = refTestDictionaries[int b.KeyCount]
+            let keySet = refKeySets[int b.KeyCount]
 
             for testKey in 0 .. testCount - 1 do
                 let data = dataSet[testKey]

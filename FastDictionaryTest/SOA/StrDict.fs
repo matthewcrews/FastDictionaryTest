@@ -98,13 +98,6 @@ module internal rec Helpers =
         let mutable length = a.Length
 
         use ptr = fixed a
-        // Move the pointer to where we want to start hashing
-        // let mutable ptr64 : nativeptr<UInt64> = retype ptr
-        // while length > 7 do
-        //     hash1 <- (BitOperations.RotateLeft (hash1, 5) + hash1) ^^^ (NativePtr.get ptr64 0)
-        //     hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ (NativePtr.get ptr64 1)
-        //     length <- length - 8
-        //     ptr64 <- NativePtr.add ptr64 2
 
         // We are going to index from the end of the string back
         let mutable ptr32 : nativeptr<UInt32> = retype (NativePtr.add ptr (a.Length - 4))
@@ -113,13 +106,6 @@ module internal rec Helpers =
             hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint (NativePtr.get ptr32 1)
             length <- length - 4
             ptr32 <- NativePtr.add ptr32 -2
-
-        // let mutable ptr16 : nativeptr<char> = retype ptr32
-        // while length > 0 do
-        //     hash2 <- (BitOperations.RotateLeft (hash2, 5) + hash2) ^^^ uint (NativePtr.get ptr16 0)
-        //     length <- length - 1
-        //     ptr16 <- NativePtr.add ptr16 1
-
 
         int (hash1 + (hash2 * 1566083941u))
 
