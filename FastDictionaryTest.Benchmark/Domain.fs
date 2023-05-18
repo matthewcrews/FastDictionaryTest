@@ -2,9 +2,21 @@
 
 open System.Collections.Generic
 
+[<Struct>]
+type StructKey = {
+    Value: int
+}
+
+type RefKey = {
+    Value: int
+}
+
+
 type KeyType =
     | Int = 0
     | String = 1
+    | Struct = 2
+    | Ref = 3
 
 type KeyCount =
     | ``10``       = 0
@@ -54,6 +66,67 @@ let intKeySets =
                 fst data[rng.Next data.Length] |]
         |]
     |]
+
+let structDataSets =
+    [| for _, count in valueCounts ->
+        [| for _ in 0 .. testCount - 1 ->
+             let d = Dictionary()
+
+             while d.Count < count do
+                 let k = rng.Next (minKey, maxKey)
+                 let k = { StructKey.Value = k }
+                 // Make the range of keys brutal for a naive Hashing function for mapping keys to slots
+                 // let k = ((rng.Next (minKey, maxKey)) <<< 16)
+                 let v = rng.Next maxValue
+                 d[k] <- v
+
+             d
+             |> Seq.map (|KeyValue|)
+             |> Array.ofSeq
+        |]
+    |]
+
+// Get samples of random keys to look up for each data set
+let structKeySets =
+    [| for keyCount, count in valueCounts ->
+        [| for testKey in 0 .. testCount - 1 ->
+            let data = structDataSets[int keyCount][testKey]
+            [| for _ in 1 .. lookupCount ->
+                // Next is exclusive on the upper bound
+                fst data[rng.Next data.Length] |]
+        |]
+    |]
+
+let refDataSets =
+    [| for _, count in valueCounts ->
+        [| for _ in 0 .. testCount - 1 ->
+             let d = Dictionary()
+
+             while d.Count < count do
+                 let k = rng.Next (minKey, maxKey)
+                 let k = { RefKey.Value = k }
+                 // Make the range of keys brutal for a naive Hashing function for mapping keys to slots
+                 // let k = ((rng.Next (minKey, maxKey)) <<< 16)
+                 let v = rng.Next maxValue
+                 d[k] <- v
+
+             d
+             |> Seq.map (|KeyValue|)
+             |> Array.ofSeq
+        |]
+    |]
+
+// Get samples of random keys to look up for each data set
+let refKeySets =
+    [| for keyCount, count in valueCounts ->
+        [| for testKey in 0 .. testCount - 1 ->
+            let data = refDataSets[int keyCount][testKey]
+            [| for _ in 1 .. lookupCount ->
+                // Next is exclusive on the upper bound
+                fst data[rng.Next data.Length] |]
+        |]
+    |]
+
 
 let strDataSets =
     [| for _, count in valueCounts ->
