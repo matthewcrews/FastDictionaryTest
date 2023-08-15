@@ -41,7 +41,7 @@ type ByteListRobinHoodInline () =
                 intDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x)
             |]
         |]
 
@@ -51,7 +51,7 @@ type ByteListRobinHoodInline () =
                 strDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x)
             |]
         |]
 

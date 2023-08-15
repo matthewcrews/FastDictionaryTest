@@ -56,7 +56,7 @@ type SOA () =
                 intDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x)
             |]
         |]
 
@@ -66,7 +66,7 @@ type SOA () =
                 strDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x)
             |]
         |]
 
@@ -76,7 +76,7 @@ type SOA () =
                 structDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x)
             |]
         |]
 
@@ -86,7 +86,7 @@ type SOA () =
                 refDataSets[int countKey][testKey]
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> fun x -> FrozenDictionary.ToFrozenDictionary(x, optimizeForReading = true)
+                |> fun x -> FrozenDictionary.ToFrozenDictionary(x)
             |]
         |]
 
