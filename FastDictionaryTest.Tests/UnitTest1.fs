@@ -225,7 +225,7 @@ let ``Frozen Dictionary matches`` () =
     //             data
     //             |> Array.map KeyValuePair
     //             |> Dictionary
-    //             |> fun x -> FrozenDictionary.ToFrozenDictionary (x, optimizeForReading = true)
+    //             |> fun x -> FrozenDictionary.ToFrozenDictionary (x)
     //         let expectedValues = dict data
     //
     //         for k in keys do
@@ -243,7 +243,7 @@ let ``Frozen Dictionary matches`` () =
                 data
                 |> Array.map KeyValuePair
                 |> Dictionary
-                |> fun x -> FrozenDictionary.ToFrozenDictionary (x, optimizeForReading = true)
+                |> fun x -> FrozenDictionary.ToFrozenDictionary (x)
             let expectedValues = dict data
 
             for k in keys do
