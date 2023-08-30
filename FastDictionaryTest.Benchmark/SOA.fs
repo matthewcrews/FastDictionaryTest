@@ -123,7 +123,8 @@ type SOA () =
         |]
 
     // [<Params(KeyType.Int, KeyType.String, KeyType.Struct, KeyType.Ref)>]
-    [<Params(KeyType.Int, KeyType.String)>]
+    // [<Params(KeyType.Int, KeyType.String)>]
+    [<Params(KeyType.String)>]
     member val KeyType = KeyType.Int with get, set
 
     [<Params(
@@ -135,7 +136,7 @@ type SOA () =
     member val KeyCount = KeyCount.``10`` with get, set
 
 
-    [<Benchmark(Description = "Dictionary")>]
+    // [<Benchmark(Description = "Dictionary")>]
     member b.Dictionary () =
 
         if b.KeyType = KeyType.Int then
