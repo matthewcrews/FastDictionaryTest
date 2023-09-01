@@ -205,17 +205,6 @@ module internal rec Helpers =
     let raiseKeyNotFound hashcode key =
         raise (KeyNotFoundException $"Missing Key: {key} Hashcode: {hashcode}")
 
-    let rec searchLoop (d: inref<Data<_, _>>) (hashCode: int) (key: 'Key) (bucketIdx: int) =
-        if hashCode = d.HashCodes[bucketIdx] &&
-           EqualityComparer.Default.Equals (key, d.Keys[bucketIdx]) then
-            d.Values[bucketIdx]
-
-        elif Next.isLast d.Nexts[bucketIdx] then
-            raiseKeyNotFound hashCode key
-
-        else
-            let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
-            searchLoop &d hashCode key nextBucketIdx
 
 open Helpers
 
@@ -227,18 +216,24 @@ type RefStaticDict<'Key, 'Value when 'Key : equality> internal (d: Data<'Key, 'V
     override _.Item
         with get (key: 'Key) =
             let hashCode = EqualityComparer.Default.GetHashCode key
-            let bucketIdx = computeBucketIndex d.BucketBitShift hashCode
+            let mutable bucketIdx = computeBucketIndex d.BucketBitShift hashCode
+            let mutable searching = true
+            let mutable result = Unchecked.defaultof<'Value>
 
-            if hashCode = d.HashCodes[bucketIdx] &&
-               EqualityComparer.Default.Equals (key, d.Keys[bucketIdx]) then
-                d.Values[bucketIdx]
+            while searching do
+                result <- d.Values[bucketIdx]
 
-            elif Next.isLast d.Nexts[bucketIdx] then
-                raiseKeyNotFound hashCode key
+                if hashCode = d.HashCodes[bucketIdx] && EqualityComparer.Default.Equals (key, d.Keys[bucketIdx]) then
+                    searching <- false
 
-            else
-                let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
-                searchLoop &d hashCode key nextBucketIdx
+                elif Next.isLast d.Nexts[bucketIdx] then
+                    raiseKeyNotFound hashCode key
+
+                else
+                    bucketIdx <- (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
+
+            result
+
 
 let create (entries: seq<'Key * 'Value>) =
     let uniqueKeys = HashSet()

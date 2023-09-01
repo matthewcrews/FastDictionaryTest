@@ -195,7 +195,7 @@ type SOA () =
 
             acc
 
-    // [<Benchmark(Description = "Frozen Dictionary")>]
+    [<Benchmark(Description = "Frozen Dictionary")>]
     member b.FrozenDictionary () =
 
         if b.KeyType = KeyType.Int then

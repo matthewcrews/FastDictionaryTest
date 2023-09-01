@@ -192,16 +192,6 @@ module internal rec Helpers =
     let raiseKeyNotFound key =
         raise (KeyNotFoundException $"Missing Key: {key}")
 
-    let rec searchLoop (d: inref<IntData<_>>) (key: int) (bucketIdx: int) =
-        if key = d.Keys[bucketIdx] then
-            d.Values[bucketIdx]
-
-        elif Next.isLast d.Nexts[bucketIdx] then
-            raiseKeyNotFound key
-
-        else
-            let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
-            searchLoop &d key nextBucketIdx
 
 open Helpers
 
@@ -212,17 +202,23 @@ type IntStaticDict<'Value> internal (d: IntData<'Value>) =
 
     override _.Item
         with get (key: int) =
-            let bucketIdx = computeBucketIndex d.BucketBitShift key
+            let mutable bucketIdx = computeBucketIndex d.BucketBitShift key
+            let mutable searching = true
+            let mutable result = Unchecked.defaultof<'Value>
 
-            if key = d.Keys[bucketIdx] then
-                d.Values[bucketIdx]
+            while searching do
+                result <- d.Values[bucketIdx]
 
-            elif Next.isLast d.Nexts[bucketIdx] then
-                raiseKeyNotFound key
+                if key = d.Keys[bucketIdx]then
+                    searching <- false
 
-            else
-                let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
-                searchLoop &d key nextBucketIdx
+                elif Next.isLast d.Nexts[bucketIdx] then
+                    raiseKeyNotFound key
+
+                else
+                    bucketIdx <- (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
+
+            result
 
 
 let create (entries: seq<int * 'Value>) =
