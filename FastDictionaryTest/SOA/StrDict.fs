@@ -46,7 +46,6 @@ module internal rec Helpers =
             KeyRanges: Range[]
             KeyChars: char[]
             Values: 'Value[]
-            HashCodes: int[]
             Nexts: byte[]
             BucketBitShift: int
             WrapAroundMask: int
@@ -82,7 +81,6 @@ module internal rec Helpers =
                 KeyRanges = keyRanges
                 KeyChars = keyChars
                 Values = acc.Values
-                HashCodes = acc.HashCodes
                 Nexts = acc.Nexts
                 BucketBitShift = acc.BucketBitShift
                 WrapAroundMask = acc.WrapAroundMask
@@ -238,7 +236,7 @@ module internal rec Helpers =
 
     let resize (d: byref<Acc<string, _>>) =
         // Resize if our fill is >75%
-        if d.Count > (d.Keys.Length >>> 2) * 3 then
+        if d.Count > (d.Keys.Length >>> 2) * 2 then
         // if count > buckets.Length - 2 then
             let prevKeys = d.Keys
             let prevValues = d.Values
@@ -262,19 +260,6 @@ module internal rec Helpers =
     let raiseKeyNotFound hashcode key =
         raise (KeyNotFoundException $"Missing Key: {key} Hashcode: {hashcode}")
 
-    let rec searchLoop (d: inref<Data<_>>) (hashCode: int) (key: string) (bucketIdx: int) =
-        let strRange = d.KeyRanges[bucketIdx]
-        let keyChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
-        if hashCode = d.HashCodes[bucketIdx] &&
-           (key.AsSpan().SequenceEqual(keyChars)) then
-            d.Values[bucketIdx]
-
-        elif Next.isLast d.Nexts[bucketIdx] then
-            raiseKeyNotFound hashCode key
-
-        else
-            let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
-            searchLoop &d hashCode key nextBucketIdx
 
 open Helpers
 
@@ -286,20 +271,27 @@ type StrStaticDict<'Value> internal (d: Data<'Value>) =
     override _.Item
         with get (key: string) =
             let hashCode = strHashCode key
-            let bucketIdx = computeBucketIndex d.BucketBitShift hashCode
-            let strRange = d.KeyRanges[bucketIdx]
-            let strChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
+            let mutable bucketIdx = computeBucketIndex d.BucketBitShift hashCode
+            let mutable searching = true
+            let mutable result = Unchecked.defaultof<'Value>
 
-            if hashCode = d.HashCodes[bucketIdx] &&
-               (key.AsSpan().SequenceEqual strChars) then
-                d.Values[bucketIdx]
+            while searching do
 
-            elif Next.isLast d.Nexts[bucketIdx] then
+                let strRange = d.KeyRanges[bucketIdx]
+                let strChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
+                result <- d.Values[bucketIdx]
+
+                if (key.AsSpan().SequenceEqual strChars) then
+                    searching <- false
+
+                elif Next.isLast d.Nexts[bucketIdx] then
                     raiseKeyNotFound hashCode key
 
                 else
-                    let nextBucketIdx = (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
-                    searchLoop &d hashCode key nextBucketIdx
+                    bucketIdx <- (bucketIdx + (int d.Nexts[bucketIdx])) &&& d.WrapAroundMask
+
+            result
+
 
 let create (entries: seq<string * 'Value>) =
     let uniqueKeys = HashSet()
