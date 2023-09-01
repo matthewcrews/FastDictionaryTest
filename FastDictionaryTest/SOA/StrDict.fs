@@ -273,6 +273,7 @@ type StrStaticDict<'Value> internal (d: Data<'Value>) =
     override _.Item
         with get (key: string) =
             let hashCode = strHashCode key
+            let keySpan = key.AsSpan()
             let mutable bucketIdx = computeBucketIndex d.BucketBitShift hashCode
             let mutable searching = true
             let mutable result = Unchecked.defaultof<'Value>
@@ -283,7 +284,7 @@ type StrStaticDict<'Value> internal (d: Data<'Value>) =
                 let strChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
                 result <- d.Values[bucketIdx]
 
-                if hashCode = d.HashCodes[bucketIdx] && (key.AsSpan().SequenceEqual strChars) then
+                if hashCode = d.HashCodes[bucketIdx] && (keySpan.SequenceEqual strChars) then
                     searching <- false
 
                 elif Next.isLast d.Nexts[bucketIdx] then
