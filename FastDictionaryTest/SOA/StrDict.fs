@@ -45,6 +45,7 @@ module internal rec Helpers =
         {
             KeyRanges: Range[]
             KeyChars: char[]
+            HashCodes: int[]
             Values: 'Value[]
             Nexts: byte[]
             BucketBitShift: int
@@ -80,6 +81,7 @@ module internal rec Helpers =
             {
                 KeyRanges = keyRanges
                 KeyChars = keyChars
+                HashCodes = acc.HashCodes
                 Values = acc.Values
                 Nexts = acc.Nexts
                 BucketBitShift = acc.BucketBitShift
@@ -281,7 +283,7 @@ type StrStaticDict<'Value> internal (d: Data<'Value>) =
                 let strChars = d.KeyChars.AsSpan(strRange.Start, strRange.Length)
                 result <- d.Values[bucketIdx]
 
-                if (key.AsSpan().SequenceEqual strChars) then
+                if hashCode = d.HashCodes[bucketIdx] && (key.AsSpan().SequenceEqual strChars) then
                     searching <- false
 
                 elif Next.isLast d.Nexts[bucketIdx] then
