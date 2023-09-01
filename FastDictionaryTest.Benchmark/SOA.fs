@@ -124,7 +124,8 @@ type SOA () =
 
     // [<Params(KeyType.Int, KeyType.String, KeyType.Struct, KeyType.Ref)>]
     // [<Params(KeyType.Int, KeyType.String)>]
-    [<Params(KeyType.String)>]
+    // [<Params(KeyType.String)>]
+    [<Params(KeyType.Struct)>]
     member val KeyType = KeyType.Int with get, set
 
     [<Params(
